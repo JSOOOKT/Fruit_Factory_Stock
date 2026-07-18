@@ -1,8 +1,10 @@
 // lib/config/routes/app_router.dart - Add stock out routes
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/pages/login_screen.dart';
+import '../../features/auth/presentation/pages/forgot_password_screen.dart';
 import '../../features/auth/presentation/pages/signup_screen.dart';
 import '../../features/product/presentation/pages/product_form_screen.dart';
 import '../../features/product/presentation/pages/product_list_screen.dart';
@@ -12,6 +14,7 @@ import '../../features/stock_out/presentation/pages/stock_out_form_screen.dart';
 import '../../features/stock_out/presentation/pages/stock_out_history_screen.dart'; 
 import '../../features/dashboard/presentation/pages/dashboard_screen.dart';
 import '../../features/settings/presentation/pages/settings_screen.dart';
+import '../../shared/models/product_type.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -24,6 +27,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/sign-up',
         builder: (context, state) => const SignUpScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: '/',
