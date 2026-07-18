@@ -1,3 +1,4 @@
+// lib/features/auth/presentation/providers/auth_providers.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -48,13 +49,14 @@ final authRepositoryProvider = FutureProvider<AuthRepository>((ref) async {
 
 // Auth State Notifier
 class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthRepository _repository;
+  final AuthRepository? _repository;
 
   AuthNotifier(this._repository) : super(const AuthState.initial());
 
   Future<void> signUp(SignUpRequest request) async {
+    if (_repository == null) return;
     state = const AuthState.loading();
-    final result = await _repository.signUp(request);
+    final result = await _repository!.signUp(request);
     
     result.fold(
       (failure) {
@@ -70,8 +72,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> signIn(LoginRequest request) async {
+    if (_repository == null) return;
     state = const AuthState.loading();
-    final result = await _repository.signIn(request);
+    final result = await _repository!.signIn(request);
     
     result.fold(
       (failure) {
@@ -87,8 +90,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> signOut() async {
+    if (_repository == null) return;
     state = const AuthState.loading();
-    final result = await _repository.signOut();
+    final result = await _repository!.signOut();
     
     result.fold(
       (failure) {
@@ -101,8 +105,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> resetPassword(ResetPasswordRequest request) async {
+    if (_repository == null) return;
     state = const AuthState.loading();
-    final result = await _repository.resetPassword(request);
+    final result = await _repository!.resetPassword(request);
     
     result.fold(
       (failure) {
@@ -117,18 +122,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> getCurrentUser() async {
+    if (_repository == null) return;
     state = const AuthState.loading();
-    final result = await _repository.getCurrentUser();
+    final result = await _repository!.getCurrentUser();
     
     result.fold(
       (failure) {
         state = const AuthState.unauthenticated(message: null);
       },
       (response) {
-        state = AuthState.authenticated(
-          user: response.user,
-          token: response.token,
-        );
+        if (response != null) {
+          state = AuthState.authenticated(
+            user: response.user,
+            token: response.token,
+          );
+        } else {
+          state = const AuthState.unauthenticated(message: null);
+        }
       },
     );
   }
@@ -138,9 +148,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String name,
     required String preferredLanguage,
   }) async {
-    if (state is! AuthAuthenticated) return;
+    if (_repository == null || state is! AuthAuthenticated) return;
 
-    final result = await _repository.updateUserProfile(
+    final result = await _repository!.updateUserProfile(
       userId: userId,
       name: name,
       preferredLanguage: preferredLanguage,
@@ -173,21 +183,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
 // Auth State provider
 final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  // This will be initialized after repository is ready
-  return AuthNotifier(ref.watch(authRepositoryProvider).value ?? 
-      throw UnimplementedError());
+  final repoAsync = ref.watch(authRepositoryProvider);
+  return repoAsync.when(
+    data: (repo) => AuthNotifier(repo),
+    error: (_, __) => AuthNotifier(null),
+    loading: () => AuthNotifier(null),
+  );
 });
 
 // Current user provider
 final currentUserProvider = Provider<User?>((ref) {
   final authState = ref.watch(authStateProvider);
-  return authState.user;
+  return authState.maybeMap(
+    authenticated: (state) => state.user,
+    orElse: () => null,
+  );
 });
 
 // Auth token provider
 final authTokenProvider = Provider<String?>((ref) {
   final authState = ref.watch(authStateProvider);
-  return authState.token;
+  return authState.maybeMap(
+    authenticated: (state) => state.token,
+    orElse: () => null,
+  );
 });
 
 // Check if user is authenticated

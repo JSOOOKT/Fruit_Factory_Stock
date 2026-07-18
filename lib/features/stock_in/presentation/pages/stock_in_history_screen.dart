@@ -217,9 +217,9 @@ class StockInHistoryScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(8.0),
                 decoration: BoxDecoration(
                   color: Colors.amber.withOpacity(0.1),
-                  borderLeft: Border(
-                    left: BorderSide(color: Colors.amber, width: 3),
-                  ),
+                 border: Border(
+  left: BorderSide(color: Colors.amber, width: 3),
+),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

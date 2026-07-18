@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 
-import '../../../auth/presentation/providers/auth_providers.dart';
-import '../../../shared/localization/app_localizations.dart';
+import '../../../auth/data/models/auth_response.dart'; 
+import '../../../shared/localization/app_localizations.dart';  
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);

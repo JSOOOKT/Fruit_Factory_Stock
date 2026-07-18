@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:fruit_factory_stock/features/auth/data/models/auth_request.dart';
 import 'package:fruit_factory_stock/features/auth/presentation/providers/auth_providers.dart';
 import 'package:fruit_factory_stock/features/auth/presentation/utils/auth_validators.dart';
-import 'package:fruit_factory_stock/shared/localization/app_localizations.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -46,11 +45,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     await ref.read(authStateProvider.notifier).signIn(request);
     
-    // Check if sign in was successful
     if (mounted) {
       final authState = ref.read(authStateProvider);
       if (authState.isAuthenticated) {
-        // Navigate to home screen
         context.go('/');
       }
     }
@@ -60,7 +57,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final isLoading = authState.isLoading;
-    final errorMessage = authState is AuthError ? authState.message : null;
+    final errorMessage = authState.isError ? (authState as AuthError).message : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -76,7 +73,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 40),
-                // Logo placeholder
                 Container(
                   width: 100,
                   height: 100,
@@ -100,28 +96,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 48),
-                // Email field
                 TextFormField(
                   controller: _emailController,
                   enabled: !isLoading,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.email,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
                     hintText: 'user@example.com',
-                    prefixIcon: const Icon(Icons.email),
+                    prefixIcon: Icon(Icons.email),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
                     ),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   validator: AuthValidators.validateEmail,
                 ),
                 const SizedBox(height: 16),
-                // Password field
                 TextFormField(
                   controller: _passwordController,
                   enabled: !isLoading,
                   decoration: InputDecoration(
-                    labelText: AppLocalizations.tr('common.confirm'),
+                    labelText: 'Password',
                     hintText: 'Enter your password',
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
@@ -136,15 +130,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         });
                       },
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
                     ),
                   ),
                   obscureText: !_isPasswordVisible,
                   validator: AuthValidators.validatePassword,
                 ),
                 const SizedBox(height: 8),
-                // Forgot password link
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -152,13 +145,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ? null
                         : () {
                             // Navigate to password reset
-                            context.push('/forgot-password');
                           },
                     child: const Text('Forgot password?'),
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Error message
                 if (errorMessage != null)
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -172,7 +163,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 const SizedBox(height: 24),
-                // Login button
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -187,7 +177,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Sign up link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

@@ -130,7 +130,7 @@ class _StockInManualScreenState extends ConsumerState<StockInManualScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.bold, width: 100),
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           Expanded(child: Text(value)),
         ],

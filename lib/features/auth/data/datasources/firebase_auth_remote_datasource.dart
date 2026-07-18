@@ -212,9 +212,15 @@ class FirebaseAuthRemoteDataSource implements AuthRemoteDataSource {
       case 'email-already-in-use':
         return AuthFailure('Email already in use');
       case 'weak-password':
-        return ValidationFailure('Password is too weak', {'password': 'Password must be at least 6 characters'});
+        return ValidationFailure(
+  message: 'Password is too weak',
+  fieldErrors: {'password': 'Password must be at least 6 characters'},
+);
       case 'invalid-email':
-        return ValidationFailure('Invalid email', {'email': 'Invalid email format'});
+        return ValidationFailure(
+  message: 'Invalid email',
+  fieldErrors: {'email': 'Invalid email format'},
+);
       case 'operation-not-allowed':
         return AuthFailure('Operation not allowed');
       case 'too-many-requests':

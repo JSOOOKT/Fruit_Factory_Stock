@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:fruit_factory_stock/features/auth/data/models/auth_request.dart';
 import 'package:fruit_factory_stock/features/auth/presentation/providers/auth_providers.dart';
 import 'package:fruit_factory_stock/features/auth/presentation/utils/auth_validators.dart';
-import 'package:fruit_factory_stock/core/constants/app_constants.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -72,7 +71,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final isLoading = authState.isLoading;
-    final errorMessage = authState is AuthError ? authState.message : null;
+    final errorMessage = authState.isError ? (authState as AuthError).message : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -87,57 +86,53 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 24),
-                // Name field
                 TextFormField(
                   controller: _nameController,
                   enabled: !isLoading,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Name',
-                    prefixIcon: const Icon(Icons.person),
+                    prefixIcon: Icon(Icons.person),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
                     ),
                   ),
                   validator: AuthValidators.validateName,
                 ),
                 const SizedBox(height: 16),
-                // Email field
                 TextFormField(
                   controller: _emailController,
                   enabled: !isLoading,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Email',
                     hintText: 'user@example.com',
-                    prefixIcon: const Icon(Icons.email),
+                    prefixIcon: Icon(Icons.email),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
                     ),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   validator: AuthValidators.validateEmail,
                 ),
                 const SizedBox(height: 16),
-                // Role dropdown
                 DropdownButtonFormField<String>(
                   value: _selectedRole,
-                  enabled: !isLoading,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Role',
-                    prefixIcon: const Icon(Icons.admin_panel_settings),
+                    prefixIcon: Icon(Icons.admin_panel_settings),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
                     ),
                   ),
-                  items: [
-                    const DropdownMenuItem(
+                  items: const [
+                    DropdownMenuItem(
                       value: 'recorder',
                       child: Text('Recorder (Data Entry)'),
                     ),
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: 'supervisor',
                       child: Text('Supervisor'),
                     ),
-                    const DropdownMenuItem(
+                    DropdownMenuItem(
                       value: 'manager',
                       child: Text('Manager'),
                     ),
@@ -151,15 +146,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                // Language dropdown
                 DropdownButtonFormField<String>(
                   value: _selectedLanguage,
-                  enabled: !isLoading,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Preferred Language',
-                    prefixIcon: const Icon(Icons.language),
+                    prefixIcon: Icon(Icons.language),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
                     ),
                   ),
                   items: const [
@@ -181,7 +174,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                // Password field
                 TextFormField(
                   controller: _passwordController,
                   enabled: !isLoading,
@@ -200,15 +192,14 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                         });
                       },
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
                     ),
                   ),
                   obscureText: !_isPasswordVisible,
                   validator: AuthValidators.validatePassword,
                 ),
                 const SizedBox(height: 16),
-                // Confirm Password field
                 TextFormField(
                   controller: _passwordConfirmController,
                   enabled: !isLoading,
@@ -228,8 +219,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                         });
                       },
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
                     ),
                   ),
                   obscureText: !_isConfirmPasswordVisible,
@@ -241,7 +232,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   },
                 ),
                 const SizedBox(height: 24),
-                // Error message
                 if (errorMessage != null)
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -255,7 +245,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     ),
                   ),
                 const SizedBox(height: 24),
-                // Sign up button
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -270,7 +259,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Sign in link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

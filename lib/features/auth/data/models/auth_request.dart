@@ -1,48 +1,59 @@
+// lib/features/auth/data/models/auth_response.dart
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:fruit_factory_stock/shared/models/user.dart';
 
-part 'auth_request.freezed.dart';
-part 'auth_request.g.dart';
+part 'auth_response.freezed.dart';
+part 'auth_response.g.dart';
 
 @freezed
-class LoginRequest with _$LoginRequest {
-  const LoginRequest._();
+class AuthResponse with _$AuthResponse {
+  const AuthResponse._();
 
-  const factory LoginRequest({
-    required String email,
-    required String password,
-  }) = _LoginRequest;
+  const factory AuthResponse({
+    required User user,
+    required String token,
+  }) = _AuthResponse;
 
-  factory LoginRequest.fromJson(Map<String, dynamic> json) =>
-      _$LoginRequestFromJson(json);
+  factory AuthResponse.fromJson(Map<String, dynamic> json) =>
+      _$AuthResponseFromJson(json);
 }
 
 @freezed
-class SignUpRequest with _$SignUpRequest {
-  const SignUpRequest._();
+class AuthState with _$AuthState {
+  const AuthState._();
 
-  const factory SignUpRequest({
-    required String name,
-    required String email,
-    required String password,
-    required String passwordConfirmation,
-    required String role, // 'recorder', 'supervisor', 'manager'
-    required String preferredLanguage, // 'th', 'en'
-  }) = _SignUpRequest;
+  const factory AuthState.initial() = AuthInitial;
+  
+  const factory AuthState.loading() = AuthLoading;
+  
+  const factory AuthState.authenticated({
+    required User user,
+    required String token,
+  }) = AuthAuthenticated;
+  
+  const factory AuthState.unauthenticated({
+    required String? message,
+  }) = AuthUnauthenticated;
+  
+  const factory AuthState.error({
+    required String message,
+  }) = AuthError;
 
-  factory SignUpRequest.fromJson(Map<String, dynamic> json) =>
-      _$SignUpRequestFromJson(json);
+  bool get isAuthenticated => this is AuthAuthenticated;
+  bool get isLoading => this is AuthLoading;
+  bool get isError => this is AuthError;
 
-  bool get passwordsMatch => password == passwordConfirmation;
-}
+  User? get user {
+    if (this is AuthAuthenticated) {
+      return (this as AuthAuthenticated).user;
+    }
+    return null;
+  }
 
-@freezed
-class ResetPasswordRequest with _$ResetPasswordRequest {
-  const ResetPasswordRequest._();
-
-  const factory ResetPasswordRequest({
-    required String email,
-  }) = _ResetPasswordRequest;
-
-  factory ResetPasswordRequest.fromJson(Map<String, dynamic> json) =>
-      _$ResetPasswordRequestFromJson(json);
+  String? get token {
+    if (this is AuthAuthenticated) {
+      return (this as AuthAuthenticated).token;
+    }
+    return null;
+  }
 }

@@ -1,33 +1,34 @@
+// lib/core/error/failure.dart
 abstract class Failure {
   final String message;
   final StackTrace? stackTrace;
 
-  Failure({required this.message, this.stackTrace});
+  Failure(this.message, [this.stackTrace]);
 
   @override
   String toString() => message;
 }
 
 class ServerFailure extends Failure {
-  ServerFailure({required String message, StackTrace? stackTrace})
-      : super(message: message, stackTrace: stackTrace);
+  ServerFailure(String message, [StackTrace? stackTrace])
+      : super(message, stackTrace);
 }
 
 class CacheFailure extends Failure {
-  CacheFailure({required String message, StackTrace? stackTrace})
-      : super(message: message, stackTrace: stackTrace);
+  CacheFailure(String message, [StackTrace? stackTrace])
+      : super(message, stackTrace);
 }
 
 class FirebaseFailure extends Failure {
   final String? code;
 
-  FirebaseFailure({required String message, this.code, StackTrace? stackTrace})
-      : super(message: message, stackTrace: stackTrace);
+  FirebaseFailure(String message, [this.code, StackTrace? stackTrace])
+      : super(message, stackTrace);
 }
 
 class AuthFailure extends Failure {
-  AuthFailure({required String message, StackTrace? stackTrace})
-      : super(message: message, stackTrace: stackTrace);
+  AuthFailure(String message, [StackTrace? stackTrace])
+      : super(message, stackTrace);
 }
 
 class ValidationFailure extends Failure {
@@ -35,67 +36,47 @@ class ValidationFailure extends Failure {
 
   ValidationFailure({
     required String message,
-    required this.fieldErrors,
+    this.fieldErrors = const {},
     StackTrace? stackTrace,
-  }) : super(message: message, stackTrace: stackTrace);
+  }) : super(message, stackTrace);
 }
 
 class NotFoundFailure extends Failure {
-  NotFoundFailure({required String message, StackTrace? stackTrace})
-      : super(message: message, stackTrace: stackTrace);
+  NotFoundFailure(String message, [StackTrace? stackTrace])
+      : super(message, stackTrace);
 }
 
 class NetworkFailure extends Failure {
-  NetworkFailure({required String message, StackTrace? stackTrace})
-      : super(message: message, stackTrace: stackTrace);
+  NetworkFailure(String message, [StackTrace? stackTrace])
+      : super(message, stackTrace);
 }
 
 class UnknownFailure extends Failure {
-  UnknownFailure({required String message, StackTrace? stackTrace})
-      : super(message: message, stackTrace: stackTrace);
+  UnknownFailure(String message, [StackTrace? stackTrace])
+      : super(message, stackTrace);
 }
 
-typedef Either<L, R> = Future<Result<L, R>>;
-
-sealed class Result<FailureType, SuccessType> {
+// Simple Result class without complex generics
+sealed class Result<T> {
   const Result();
 
-  factory Result.success(SuccessType data) => ResultSuccess._(data);
-  factory Result.failure(FailureType error) => ResultFailure._(error);
+  factory Result.success(T data) = Success;
+  factory Result.failure(Failure error) = Failure;
 
   R fold<R>(
-    R Function(FailureType error) onFailure,
-    R Function(SuccessType data) onSuccess,
-  ) {
-    if (this is ResultSuccess<FailureType, SuccessType>) {
-      return onSuccess((this as ResultSuccess<FailureType, SuccessType>).data);
-    } else {
-      return onFailure((this as ResultFailure<FailureType, SuccessType>).error);
-    }
-  }
-
-  Future<R> foldAsync<R>(
-    Future<R> Function(FailureType error) onFailure,
-    Future<R> Function(SuccessType data) onSuccess,
-  ) async {
-    if (this is ResultSuccess<FailureType, SuccessType>) {
-      return onSuccess((this as ResultSuccess<FailureType, SuccessType>).data);
-    } else {
-      return onFailure((this as ResultFailure<FailureType, SuccessType>).error);
-    }
-  }
+    R Function(Failure error) onFailure,
+    R Function(T data) onSuccess,
+  );
 }
 
-final class ResultSuccess<FailureType, SuccessType>
-    extends Result<FailureType, SuccessType> {
-  final SuccessType data;
+final class Success<T> extends Result<T> {
+  final T data;
 
-  const ResultSuccess._(this.data);
+  const Success(this.data);
 }
 
-final class ResultFailure<FailureType, SuccessType>
-    extends Result<FailureType, SuccessType> {
-  final FailureType error;
+final class FailureResult<T> extends Result<T> {
+  final Failure error;
 
-  const ResultFailure._(this.error);
+  const FailureResult(this.error);
 }

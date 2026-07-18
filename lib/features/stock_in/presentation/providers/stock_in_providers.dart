@@ -42,7 +42,10 @@ Stream<List<StockInEntry>> watchStockInEntries(WatchStockInEntriesRef ref) {
 /// Get all stock in entries (async)
 @riverpod
 Future<List<StockInEntry>> getAllStockInEntries(GetAllStockInEntriesRef ref) {
-  return ref.watch(watchStockInEntriesProvider).first;
+  return ref.watch(watchStockInEntriesProvider).firstWhere(
+  (element) => true,
+  orElse: () => throw Exception('No entries found'),
+);
 }
 
 /// Get recent stock in entries
