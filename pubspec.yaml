@@ -100,3 +100,14 @@ flutter:
         - asset: assets/fonts/Roboto-Regular.ttf
         - asset: assets/fonts/Roboto-Bold.ttf
           weight: 700
+
+  # Charts & Reports
+  fl_chart: ^0.68.0          # Beautiful charts
+  excel: ^4.0.0              # Excel export
+  printing: ^5.13.0          # PDF generation
+  pdf: ^3.11.0              # PDF creation
+  share_plus: ^10.0.0       # Sharing reports
+  
+  # Date & Time
+  intl: ^0.19.0             # Date formatting
+  table_calendar: ^3.1.2    # Calendar widget

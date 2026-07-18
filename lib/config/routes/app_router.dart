@@ -1,128 +1,73 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+// lib/config/routes/app_router.dart - Add stock out routes
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-// Placeholder screens - will be implemented in feature modules
-import 'package:flutter/material.dart';
+import '../../features/auth/presentation/pages/login_screen.dart';
+import '../../features/auth/presentation/pages/signup_screen.dart';
+import '../../features/product/presentation/pages/product_form_screen.dart';
+import '../../features/product/presentation/pages/product_list_screen.dart';
+import '../../features/stock_in/presentation/pages/stock_in_form_screen.dart';
+import '../../features/stock_in/presentation/pages/stock_in_history_screen.dart';
+import '../../features/stock_out/presentation/pages/stock_out_form_screen.dart'; 
+import '../../features/stock_out/presentation/pages/stock_out_history_screen.dart'; 
+import '../../features/dashboard/presentation/pages/dashboard_screen.dart';
+import '../../features/settings/presentation/pages/settings_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/login',
     routes: [
       GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/sign-up',
+        builder: (context, state) => const SignUpScreen(),
+      ),
+      GoRoute(
         path: '/',
-        builder: (context, state) => const HomeScreen(),
-        routes: [
-          GoRoute(
-            path: 'stock-in',
-            builder: (context, state) => const StockInScreen(),
-          ),
-          GoRoute(
-            path: 'stock-out',
-            builder: (context, state) => const StockOutScreen(),
-          ),
-          GoRoute(
-            path: 'dashboard',
-            builder: (context, state) => const DashboardScreen(),
-          ),
-          GoRoute(
-            path: 'products',
-            builder: (context, state) => const ProductManagementScreen(),
-          ),
-          GoRoute(
-            path: 'users',
-            builder: (context, state) => const UserManagementScreen(),
-          ),
-          GoRoute(
-            path: 'settings',
-            builder: (context, state) => const SettingsScreen(),
-          ),
-        ],
+        builder: (context, state) => const DashboardScreen(),
+      ),
+      // Products
+      GoRoute(
+        path: '/products',
+        builder: (context, state) => const ProductListScreen(),
+      ),
+      GoRoute(
+        path: '/products/add',
+        builder: (context, state) => const ProductFormScreen(),
+      ),
+      GoRoute(
+        path: '/products/edit/:code',
+        builder: (context, state) {
+          final product = state.extra as ProductType?;
+          return ProductFormScreen(existingProduct: product);
+        },
+      ),
+      // Stock In
+      GoRoute(
+        path: '/stock-in',
+        builder: (context, state) => const StockInFormScreen(),
+      ),
+      GoRoute(
+        path: '/stock-in/history',
+        builder: (context, state) => const StockInHistoryScreen(),
+      ),
+      // Stock Out - NEW
+      GoRoute(
+        path: '/stock-out',
+        builder: (context, state) => const StockOutFormScreen(),
+      ),
+      GoRoute(
+        path: '/stock-out/history',
+        builder: (context, state) => const StockOutHistoryScreen(),
+      ),
+      // Settings
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
   );
 });
-
-// Placeholder screens
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Fruit Factory Stock')),
-      body: const Center(child: Text('Home Screen - Coming Soon')),
-    );
-  }
-}
-
-class StockInScreen extends StatelessWidget {
-  const StockInScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Stock In')),
-      body: const Center(child: Text('Stock In Screen')),
-    );
-  }
-}
-
-class StockOutScreen extends StatelessWidget {
-  const StockOutScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Stock Out')),
-      body: const Center(child: Text('Stock Out Screen')),
-    );
-  }
-}
-
-class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
-      body: const Center(child: Text('Dashboard Screen')),
-    );
-  }
-}
-
-class ProductManagementScreen extends StatelessWidget {
-  const ProductManagementScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Products')),
-      body: const Center(child: Text('Product Management Screen')),
-    );
-  }
-}
-
-class UserManagementScreen extends StatelessWidget {
-  const UserManagementScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Users')),
-      body: const Center(child: Text('User Management Screen')),
-    );
-  }
-}
-
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: const Center(child: Text('Settings Screen')),
-    );
-  }
-}
