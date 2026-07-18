@@ -53,6 +53,7 @@ dependencies:
   # Database (Offline support)
   sqflite: ^2.3.0
   path: ^1.8.0
+  shared_preferences: ^2.2.0
 
   # Date & Time
   table_calendar: ^3.0.0
