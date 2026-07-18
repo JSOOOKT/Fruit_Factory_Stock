@@ -1,0 +1,136 @@
+{
+  "app_name": "Fruit Factory Stock",
+  "app_version": "Version 1.0.0",
+  
+  "common": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "ok": "OK",
+    "close": "Close",
+    "search": "Search",
+    "filter": "Filter",
+    "add": "Add",
+    "no_data": "No data"
+  },
+
+  "home": {
+    "title": "Home",
+    "welcome": "Welcome",
+    "quick_actions": "Quick Actions"
+  },
+
+  "stock_in": {
+    "title": "Stock In",
+    "sender_name": "Sender Name",
+    "date_received": "Date Received",
+    "product_code": "Product Code",
+    "product_type": "Product Type",
+    "quantity_kg": "Quantity (KG)",
+    "shift": "Shift",
+    "note": "Note",
+    "recorded_by": "Recorded By",
+    "voice_entry": "Voice Entry",
+    "manual_entry": "Manual Entry",
+    "confirm_entry": "Confirm Entry",
+    "edit_fields": "Edit Fields",
+    "record_again": "Record Again",
+    "entry_history": "Entry History"
+  },
+
+  "stock_out": {
+    "title": "Stock Out",
+    "product_code": "Product Code",
+    "product_type": "Product Type",
+    "quantity_kg": "Quantity (KG)",
+    "date_issued": "Date Issued",
+    "purpose": "Purpose",
+    "recorded_by": "Recorded By",
+    "insufficient_stock": "Insufficient Stock",
+    "available_quantity": "Available Quantity"
+  },
+
+  "dashboard": {
+    "title": "Dashboard",
+    "summary": "Summary",
+    "total_in": "Total In",
+    "total_out": "Total Out",
+    "balance": "Balance",
+    "low_stock_alert": "Low Stock Alert",
+    "by_product": "By Product",
+    "filter_by_date": "Filter by Date",
+    "filter_by_sender": "Filter by Sender",
+    "filter_by_product": "Filter by Product"
+  },
+
+  "products": {
+    "title": "Manage Products",
+    "product_code": "Product Code",
+    "name_th": "Name (Thai)",
+    "name_en": "Name (English)",
+    "unit": "Unit",
+    "active": "Active",
+    "add_product": "Add Product",
+    "edit_product": "Edit Product",
+    "delete_product": "Delete Product"
+  },
+
+  "users": {
+    "title": "Manage Users",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "preferred_language": "Preferred Language",
+    "add_user": "Add User",
+    "edit_user": "Edit User",
+    "delete_user": "Delete User",
+    "role_recorder": "Recorder",
+    "role_supervisor": "Supervisor",
+    "role_manager": "Manager",
+    "role_admin": "Admin"
+  },
+
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "thai": "ไทย",
+    "english": "English",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "about": "About",
+    "logout": "Logout"
+  },
+
+  "validation": {
+    "required": "Required",
+    "invalid_email": "Invalid email",
+    "invalid_quantity": "Invalid quantity",
+    "quantity_must_be_positive": "Quantity must be positive",
+    "quantity_too_large": "Quantity exceeds maximum",
+    "sender_name_too_short": "Sender name is too short",
+    "sender_name_too_long": "Sender name is too long"
+  },
+
+  "errors": {
+    "something_went_wrong": "Something went wrong",
+    "network_error": "Network error",
+    "server_error": "Server error",
+    "unauthorized": "Unauthorized",
+    "not_found": "Not found",
+    "try_again": "Try again"
+  },
+
+  "voice": {
+    "tap_to_record": "Tap to record",
+    "recording": "Recording...",
+    "processing": "Processing...",
+    "no_speech_detected": "No speech detected",
+    "speech_not_recognized": "Speech not recognized"
+  }
+}

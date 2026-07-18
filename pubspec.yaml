@@ -1,0 +1,101 @@
+name: fruit_factory_stock
+description: A mobile-first app for recording stock in/out of raw materials in a fruit preservation factory using voice entry.
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^2.24.0
+  firebase_auth: ^4.16.0
+  cloud_firestore: ^4.14.0
+  firebase_storage: ^11.6.0
+
+  # State Management (Riverpod for powerful reactive state)
+  riverpod: ^2.4.0
+  flutter_riverpod: ^2.4.0
+  riverpod_generator: ^2.3.0
+
+  # Voice Input (Speech-to-Text)
+  speech_to_text: ^6.3.0
+
+  # Text-to-Speech (for confirmation)
+  tts: ^0.2.12
+
+  # Localization (Multilingual support: TH/EN)
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.19.0
+  easy_localization: ^9.0.0
+
+  # UI & Design
+  flutter_screenutil: ^5.9.0  # Responsive design
+  google_fonts: ^6.0.0
+  cached_network_image: ^3.3.0
+
+  # State & Navigation
+  go_router: ^13.0.0
+
+  # Data & Serialization
+  freezed_annotation: ^2.4.0
+  json_annotation: ^4.8.0
+
+  # Utilities
+  uuid: ^4.0.0
+  intl: ^0.19.0
+  get_it: ^7.6.0  # Service locator for dependency injection
+  logger: ^2.0.0
+
+  # Database (Offline support)
+  sqflite: ^2.3.0
+  path: ^1.8.0
+
+  # Date & Time
+  table_calendar: ^3.0.0
+
+  # PDF Export
+  pdf: ^3.10.0
+  printing: ^5.11.0
+
+  # Excel Export (for reports)
+  excel: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Code generation
+  build_runner: ^2.4.0
+  riverpod_generator: ^2.3.0
+  freezed: ^2.4.0
+  json_serializable: ^6.7.0
+
+  # Linting & Analysis
+  flutter_lints: ^3.0.0
+  very_good_analysis: ^5.1.0
+
+flutter:
+  uses-material-design: true
+  
+  # Localization assets
+  assets:
+    - assets/i18n/
+    - assets/icons/
+    - assets/images/
+
+  # Fonts with better Thai support
+  fonts:
+    - family: NotoSansThai
+      fonts:
+        - asset: assets/fonts/NotoSansThai-Regular.ttf
+        - asset: assets/fonts/NotoSansThai-Bold.ttf
+          weight: 700
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700

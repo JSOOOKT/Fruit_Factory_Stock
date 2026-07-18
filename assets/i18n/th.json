@@ -1,0 +1,136 @@
+{
+  "app_name": "Fruit Factory Stock",
+  "app_version": "Version 1.0.0",
+  
+  "common": {
+    "confirm": "ยืนยัน",
+    "cancel": "ยกเลิก",
+    "save": "บันทึก",
+    "edit": "แก้ไข",
+    "delete": "ลบ",
+    "back": "ย้อนกลับ",
+    "next": "ถัดไป",
+    "submit": "ส่ง",
+    "ok": "ตกลง",
+    "close": "ปิด",
+    "search": "ค้นหา",
+    "filter": "ตัวกรอง",
+    "add": "เพิ่ม",
+    "no_data": "ไม่มีข้อมูล"
+  },
+
+  "home": {
+    "title": "หน้าแรก",
+    "welcome": "ยินดีต้อนรับ",
+    "quick_actions": "การดำเนินการด่วน"
+  },
+
+  "stock_in": {
+    "title": "รับเข้าสินค้า",
+    "sender_name": "ชื่อผู้ส่ง",
+    "date_received": "วันที่รับเข้า",
+    "product_code": "รหัสสินค้า",
+    "product_type": "ประเภทสินค้า",
+    "quantity_kg": "จำนวน (กิโลกรัม)",
+    "shift": "กะ",
+    "note": "หมายเหตุ",
+    "recorded_by": "ผู้บันทึก",
+    "voice_entry": "บันทึกด้วยเสียง",
+    "manual_entry": "บันทึกด้วยมือ",
+    "confirm_entry": "ยืนยันข้อมูล",
+    "edit_fields": "แก้ไขฟิลด์",
+    "record_again": "บันทึกใหม่",
+    "entry_history": "ประวัติการบันทึก"
+  },
+
+  "stock_out": {
+    "title": "นำออกสินค้า",
+    "product_code": "รหัสสินค้า",
+    "product_type": "ประเภทสินค้า",
+    "quantity_kg": "จำนวน (กิโลกรัม)",
+    "date_issued": "วันที่นำออก",
+    "purpose": "วัตถุประสงค์",
+    "recorded_by": "ผู้บันทึก",
+    "insufficient_stock": "สินค้าไม่พอ",
+    "available_quantity": "จำนวนที่มีอยู่"
+  },
+
+  "dashboard": {
+    "title": "แดชบอร์ด",
+    "summary": "สรุปข้อมูล",
+    "total_in": "ยอดรวมรับเข้า",
+    "total_out": "ยอดนำออกผลิต",
+    "balance": "คงเหลือ",
+    "low_stock_alert": "แจ้งเตือนสินค้าไม่พอ",
+    "by_product": "จำแนกตามประเภท",
+    "filter_by_date": "ตัวกรองตามวันที่",
+    "filter_by_sender": "ตัวกรองตามผู้ส่ง",
+    "filter_by_product": "ตัวกรองตามประเภทสินค้า"
+  },
+
+  "products": {
+    "title": "จัดการสินค้า",
+    "product_code": "รหัสสินค้า",
+    "name_th": "ชื่อ (ไทย)",
+    "name_en": "ชื่อ (อังกฤษ)",
+    "unit": "หน่วย",
+    "active": "ใช้งาน",
+    "add_product": "เพิ่มสินค้า",
+    "edit_product": "แก้ไขสินค้า",
+    "delete_product": "ลบสินค้า"
+  },
+
+  "users": {
+    "title": "จัดการผู้ใช้งาน",
+    "name": "ชื่อ",
+    "email": "อีเมล",
+    "role": "บทบาท",
+    "preferred_language": "ภาษาที่ต้องการ",
+    "add_user": "เพิ่มผู้ใช้งาน",
+    "edit_user": "แก้ไขผู้ใช้งาน",
+    "delete_user": "ลบผู้ใช้งาน",
+    "role_recorder": "ผู้บันทึก",
+    "role_supervisor": "หัวหน้ากะ",
+    "role_manager": "ผู้จัดการ",
+    "role_admin": "ผู้ดูแลระบบ"
+  },
+
+  "settings": {
+    "title": "ตั้งค่า",
+    "language": "ภาษา",
+    "thai": "ไทย",
+    "english": "English",
+    "theme": "ธีม",
+    "light": "สว่าง",
+    "dark": "มืด",
+    "about": "เกี่ยวกับ",
+    "logout": "ออกจากระบบ"
+  },
+
+  "validation": {
+    "required": "จำเป็นต้องใส่",
+    "invalid_email": "อีเมลไม่ถูกต้อง",
+    "invalid_quantity": "จำนวนไม่ถูกต้อง",
+    "quantity_must_be_positive": "จำนวนต้องเป็นจำนวนบวก",
+    "quantity_too_large": "จำนวนเกินค่าสูงสุด",
+    "sender_name_too_short": "ชื่อผู้ส่งสั้นเกินไป",
+    "sender_name_too_long": "ชื่อผู้ส่งยาวเกินไป"
+  },
+
+  "errors": {
+    "something_went_wrong": "เกิดข้อผิดพลาด",
+    "network_error": "ข้อผิดพลาดการเชื่อมต่อ",
+    "server_error": "ข้อผิดพลาดของเซิร์ฟเวอร์",
+    "unauthorized": "ไม่มีสิทธิ์เข้าถึง",
+    "not_found": "ไม่พบ",
+    "try_again": "ลองใหม่"
+  },
+
+  "voice": {
+    "tap_to_record": "แตะเพื่อบันทึกเสียง",
+    "recording": "กำลังบันทึก...",
+    "processing": "กำลังประมวลผล...",
+    "no_speech_detected": "ไม่พบเสียง",
+    "speech_not_recognized": "ไม่สามารถจำแนกเสียงได้"
+  }
+}
