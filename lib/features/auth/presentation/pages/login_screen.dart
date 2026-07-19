@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:fruit_factory_stock/features/auth/data/models/auth_request.dart';
-import 'package:fruit_factory_stock/features/auth/presentation/providers/auth_providers.dart';
-import 'package:fruit_factory_stock/features/auth/presentation/utils/auth_validators.dart';
+import '../providers/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -13,18 +11,11 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  late TextEditingController _emailController;
-  late TextEditingController _passwordController;
-  late GlobalKey<FormState> _formKey;
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _emailController = TextEditingController();
-    _passwordController = TextEditingController();
-    _formKey = GlobalKey<FormState>();
-  }
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -34,145 +25,127 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
-    final request = LoginRequest(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
+    setState(() => _isLoading = true);
+    await ref.read(authStateProvider.notifier).signIn(
+      _emailController.text.trim(),
+      _passwordController.text,
     );
+    setState(() => _isLoading = false);
 
-    await ref.read(authStateProvider.notifier).signIn(request);
-    
-    if (mounted) {
-      final authState = ref.read(authStateProvider);
-      if (authState.isAuthenticated) {
-        context.go('/');
-      }
+    final authState = ref.read(authStateProvider);
+    if (authState.isAuthenticated) {
+      context.go('/');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
-    final isLoading = authState.isLoading;
-    final errorMessage = authState.isError ? (authState as AuthError).message : null;
+    final error = authState.error;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sign In'),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
+      body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 40),
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.green[200],
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '🍌',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ),
+                const Icon(
+                  Icons.inventory_2,
+                  size: 72,
+                  color: Colors.green,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 Text(
                   'Fruit Factory Stock',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
-                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sign in to continue',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[600],
+                      ),
                 ),
                 const SizedBox(height: 48),
                 TextFormField(
                   controller: _emailController,
-                  enabled: !isLoading,
                   decoration: const InputDecoration(
                     labelText: 'Email',
-                    hintText: 'user@example.com',
                     prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
-                    ),
                   ),
                   keyboardType: TextInputType.emailAddress,
-                  validator: AuthValidators.validateEmail,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Email is required';
+                    }
+                    if (!value.contains('@')) {
+                      return 'Enter a valid email';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
-                  enabled: !isLoading,
                   decoration: InputDecoration(
                     labelText: 'Password',
-                    hintText: 'Enter your password',
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _isPasswordVisible
-                            ? Icons.visibility
-                            : Icons.visibility_off,
+                        _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
-                    ),
-                    border: const OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                      onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                     ),
                   ),
                   obscureText: !_isPasswordVisible,
-                  validator: AuthValidators.validatePassword,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Password is required';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
                 ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: isLoading
-                        ? null
-                        : () {
-                            // Navigate to password reset
-                          },
-                    child: const Text('Forgot password?'),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                if (errorMessage != null)
+                if (error != null) ...[
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red[100],
+                      color: Colors.red[50],
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red[200]!),
                     ),
-                    child: Text(
-                      errorMessage,
-                      style: TextStyle(color: Colors.red[900]),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red[700]),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            error,
+                            style: TextStyle(color: Colors.red[700]),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ],
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: isLoading ? null : _handleLogin,
-                    child: isLoading
-                        ? const CircularProgressIndicator(
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          )
+                    onPressed: _isLoading ? null : _handleLogin,
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
                         : const Text('Sign In'),
                   ),
                 ),
@@ -180,13 +153,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Don't have an account? "),
+                    const Text("Don't have an account?"),
                     TextButton(
-                      onPressed: isLoading
-                          ? null
-                          : () {
-                              context.push('/sign-up');
-                            },
+                      onPressed: () => context.push('/sign-up'),
                       child: const Text('Sign Up'),
                     ),
                   ],

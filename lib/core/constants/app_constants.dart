@@ -1,42 +1,30 @@
 class AppConstants {
-  // API & Firebase
-  static const String firebaseProjectId = 'fruit-factory-stock-dev';
-
-  // App Info
   static const String appName = 'Fruit Factory Stock';
   static const String appVersion = '1.0.0';
-
-  // Shifts
-  static const List<String> shifts = ['Morning', 'Afternoon', 'Evening'];
-  static const Map<String, String> shiftsLocalized = {
-    'Morning': 'เช้า',
-    'Afternoon': 'บ่าย',
-    'Evening': 'ดึก',
-  };
-
+  
+  // Firebase Collections
+  static const String usersCollection = 'users';
+  static const String productsCollection = 'products';
+  static const String stockInCollection = 'stock_in_entries';
+  static const String stockOutCollection = 'stock_out_entries';
+  
   // Roles
-  static const List<String> userRoles = [
-    'recorder',
-    'supervisor',
-    'manager',
-    'admin'
-  ];
-
-  // Units
-  static const String defaultUnit = 'KG';
-
-  // Voice Recognition
-  static const Duration voiceRecordingTimeout = Duration(seconds: 30);
-  static const Duration voicePauseDuration = Duration(seconds: 3);
-
+  static const List<String> roles = ['recorder', 'supervisor', 'manager', 'admin'];
+  
+  // Shifts
+  static const List<String> shifts = ['morning', 'afternoon', 'night'];
+  static const Map<String, String> shiftLabels = {
+    'morning': 'เช้า',
+    'afternoon': 'บ่าย',
+    'night': 'ดึก',
+  };
+  
   // Validation
-  static const int minSenderNameLength = 2;
-  static const int maxSenderNameLength = 100;
-  static const int minProductCodeLength = 2;
-  static const int maxProductCodeLength = 10;
   static const double minQuantity = 0.1;
   static const double maxQuantity = 100000;
-
-  // Default Low Stock Alert
-  static const double defaultLowStockThreshold = 100;
+  static const int minNameLength = 2;
+  static const int maxNameLength = 100;
+  
+  // Low Stock Threshold
+  static const double lowStockThreshold = 100.0;
 }

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:fruit_factory_stock/features/auth/data/models/auth_request.dart';
-import 'package:fruit_factory_stock/features/auth/presentation/providers/auth_providers.dart';
-import 'package:fruit_factory_stock/features/auth/presentation/utils/auth_validators.dart';
+import '../providers/auth_providers.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -13,268 +11,249 @@ class SignUpScreen extends ConsumerStatefulWidget {
 }
 
 class _SignUpScreenState extends ConsumerState<SignUpScreen> {
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
-  late TextEditingController _passwordController;
-  late TextEditingController _passwordConfirmController;
-  late GlobalKey<FormState> _formKey;
-
-  String _selectedRole = 'recorder';
-  String _selectedLanguage = 'th';
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _factoryIdController = TextEditingController();
   bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController();
-    _emailController = TextEditingController();
-    _passwordController = TextEditingController();
-    _passwordConfirmController = TextEditingController();
-    _formKey = GlobalKey<FormState>();
-  }
+  bool _isLoading = false;
+  String _selectedRole = 'recorder';
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _passwordConfirmController.dispose();
+    _confirmPasswordController.dispose();
+    _factoryIdController.dispose();
     super.dispose();
   }
 
   Future<void> _handleSignUp() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('รหัสผ่านไม่ตรงกัน / Passwords do not match')),
+      );
       return;
     }
 
-    final request = SignUpRequest(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      passwordConfirmation: _passwordConfirmController.text,
-      role: _selectedRole,
-      preferredLanguage: _selectedLanguage,
+    setState(() => _isLoading = true);
+    
+    final success = await ref.read(authStateProvider.notifier).signUp(
+      _emailController.text.trim(),
+      _passwordController.text,
+      _nameController.text.trim(),
+      _selectedRole,
+      _factoryIdController.text.trim(),
     );
+    
+    setState(() => _isLoading = false);
 
-    await ref.read(authStateProvider.notifier).signUp(request);
-
-    if (mounted) {
-      final authState = ref.read(authStateProvider);
-      if (authState.isAuthenticated) {
-        context.go('/');
-      }
+    if (success && mounted) {
+      context.go('/');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
-    final isLoading = authState.isLoading;
-    final errorMessage = authState.isError ? (authState as AuthError).message : null;
+    final error = authState.error;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Account'),
-        centerTitle: true,
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
+      body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
-            child: Column(
-              children: [
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _nameController,
-                  enabled: !isLoading,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 24),
+                  
+                  // Full Name
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'ชื่อ-นามสกุล / Full Name',
+                      prefixIcon: Icon(Icons.person),
                     ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'กรุณากรอกชื่อ / Name is required';
+                      }
+                      if (value.length < 2) {
+                        return 'ชื่อต้องมีอย่างน้อย 2 ตัวอักษร / Name must be at least 2 characters';
+                      }
+                      return null;
+                    },
                   ),
-                  validator: AuthValidators.validateName,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _emailController,
-                  enabled: !isLoading,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'user@example.com',
-                    prefixIcon: Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                  const SizedBox(height: 16),
+                  
+                  // Email
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'อีเมล / Email',
+                      prefixIcon: Icon(Icons.email),
                     ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'กรุณากรอกอีเมล / Email is required';
+                      }
+                      if (!value.contains('@')) {
+                        return 'กรุณากรอกอีเมลให้ถูกต้อง / Enter a valid email';
+                      }
+                      return null;
+                    },
                   ),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: AuthValidators.validateEmail,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _selectedRole,
-                  decoration: const InputDecoration(
-                    labelText: 'Role',
-                    prefixIcon: Icon(Icons.admin_panel_settings),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                  const SizedBox(height: 16),
+                  
+                  // Factory ID
+                  TextFormField(
+                    controller: _factoryIdController,
+                    decoration: const InputDecoration(
+                      labelText: 'รหัสโรงงาน / Factory ID',
+                      prefixIcon: Icon(Icons.factory),
+                      hintText: 'กรุณากรอก ID ของโรงงาน / Enter your factory ID',
                     ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'กรุณากรอกรหัสโรงงาน / Factory ID is required';
+                      }
+                      if (value.length < 3) {
+                        return 'รหัสโรงงานต้องมีอย่างน้อย 3 ตัวอักษร / Factory ID must be at least 3 characters';
+                      }
+                      return null;
+                    },
                   ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'recorder',
-                      child: Text('Recorder (Data Entry)'),
+                  const SizedBox(height: 16),
+                  
+                  // Role
+                  DropdownButtonFormField<String>(
+                    value: _selectedRole,
+                    decoration: const InputDecoration(
+                      labelText: 'บทบาท / Role',
+                      prefixIcon: Icon(Icons.admin_panel_settings),
                     ),
-                    DropdownMenuItem(
-                      value: 'supervisor',
-                      child: Text('Supervisor'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'manager',
-                      child: Text('Manager'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedRole = value;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _selectedLanguage,
-                  decoration: const InputDecoration(
-                    labelText: 'Preferred Language',
-                    prefixIcon: Icon(Icons.language),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
-                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'recorder', child: Text('พนักงานบันทึก / Recorder')),
+                      DropdownMenuItem(value: 'supervisor', child: Text('หัวหน้ากะ / Supervisor')),
+                      DropdownMenuItem(value: 'manager', child: Text('ผู้จัดการ / Manager')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) setState(() => _selectedRole = value);
+                    },
                   ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'th',
-                      child: Text('ไทย (Thai)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'en',
-                      child: Text('English'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedLanguage = value;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  enabled: !isLoading,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isPasswordVisible
-                            ? Icons.visibility
-                            : Icons.visibility_off,
+                  const SizedBox(height: 16),
+                  
+                  // Password
+                  TextFormField(
+                    controller: _passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'รหัสผ่าน / Password',
+                      prefixIcon: const Icon(Icons.lock),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                        ),
+                        onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _isPasswordVisible = !_isPasswordVisible;
-                        });
-                      },
                     ),
-                    border: const OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
-                    ),
+                    obscureText: !_isPasswordVisible,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'กรุณากรอกรหัสผ่าน / Password is required';
+                      }
+                      if (value.length < 6) {
+                        return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร / Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
                   ),
-                  obscureText: !_isPasswordVisible,
-                  validator: AuthValidators.validatePassword,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordConfirmController,
-                  enabled: !isLoading,
-                  decoration: InputDecoration(
-                    labelText: 'Confirm Password',
-                    prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isConfirmPasswordVisible
-                            ? Icons.visibility
-                            : Icons.visibility_off,
+                  const SizedBox(height: 16),
+                  
+                  // Confirm Password
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    decoration: const InputDecoration(
+                      labelText: 'ยืนยันรหัสผ่าน / Confirm Password',
+                      prefixIcon: Icon(Icons.lock_outline),
+                    ),
+                    obscureText: true,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'กรุณายืนยันรหัสผ่าน / Please confirm your password';
+                      }
+                      return null;
+                    },
+                  ),
+                  
+                  if (error != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red[200]!),
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _isConfirmPasswordVisible =
-                              !_isConfirmPasswordVisible;
-                        });
-                      },
-                    ),
-                    border: const OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
-                    ),
-                  ),
-                  obscureText: !_isConfirmPasswordVisible,
-                  validator: (value) {
-                    return AuthValidators.validatePasswordConfirmation(
-                      _passwordController.text,
-                      value,
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                if (errorMessage != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      errorMessage,
-                      style: TextStyle(color: Colors.red[900]),
-                    ),
-                  ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : _handleSignUp,
-                    child: isLoading
-                        ? const CircularProgressIndicator(
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          )
-                        : const Text('Create Account'),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Already have an account? '),
-                    TextButton(
-                      onPressed: isLoading
-                          ? null
-                          : () {
-                              context.pop();
-                            },
-                      child: const Text('Sign In'),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red[700]),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              error,
+                              style: TextStyle(color: Colors.red[700]),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 24),
-              ],
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Create Account Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleSignUp,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text('สร้างบัญชี / Create Account'),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Sign In Link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('มีบัญชีแล้ว? / Already have an account?'),
+                      TextButton(
+                        onPressed: () => context.pop(),
+                        child: const Text('เข้าสู่ระบบ / Sign In'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -3,13 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:fruit_factory_stock/features/auth/data/datasources/auth_datasource.dart';
-import 'package:fruit_factory_stock/features/auth/data/datasources/firebase_auth_remote_datasource.dart';
-import 'package:fruit_factory_stock/features/auth/data/datasources/shared_preferences_auth_local_datasource.dart';
-import 'package:fruit_factory_stock/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:fruit_factory_stock/features/auth/data/models/auth_response.dart';
-import 'package:fruit_factory_stock/features/auth/data/models/auth_request.dart';
-import 'package:fruit_factory_stock/shared/models/user.dart';
 
 // Firebase providers
 final firebaseAuthProvider = Provider<fb.FirebaseAuth>((ref) {
@@ -20,203 +13,245 @@ final firestoreProvider = Provider<FirebaseFirestore>((ref) {
   return FirebaseFirestore.instance;
 });
 
-// SharedPreferences provider
-final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async {
-  return await SharedPreferences.getInstance();
-});
-
-// DataSource providers
-final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
+// Auth state provider
+final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final auth = ref.watch(firebaseAuthProvider);
   final firestore = ref.watch(firestoreProvider);
-  return FirebaseAuthRemoteDataSource(auth: auth, firestore: firestore);
+  return AuthNotifier(auth, firestore);
 });
 
-final authLocalDataSourceProvider = FutureProvider<AuthLocalDataSource>((ref) async {
-  final prefs = await ref.watch(sharedPreferencesProvider.future);
-  return SharedPreferencesAuthLocalDataSource(prefs: prefs);
-});
+class AuthState {
+  final fb.User? user;
+  final bool isLoading;
+  final String? error;
+  final bool isInitialized;
 
-// Repository provider
-final authRepositoryProvider = FutureProvider<AuthRepository>((ref) async {
-  final remoteDataSource = ref.watch(authRemoteDataSourceProvider);
-  final localDataSource = await ref.watch(authLocalDataSourceProvider.future);
-  return AuthRepositoryImpl(
-    remoteDataSource: remoteDataSource,
-    localDataSource: localDataSource,
-  );
-});
+  const AuthState({
+    this.user,
+    this.isLoading = false,
+    this.error,
+    this.isInitialized = false,
+  });
 
-// Auth State Notifier
-class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthRepository? _repository;
+  bool get isAuthenticated => user != null && isInitialized;
+  bool get isNotAuthenticated => user == null && isInitialized && !isLoading && error == null;
+  bool get hasError => error != null;
 
-  AuthNotifier(this._repository) : super(const AuthState.initial());
-
-  Future<void> signUp(SignUpRequest request) async {
-    if (_repository == null) return;
-    state = const AuthState.loading();
-    final result = await _repository!.signUp(request);
-    
-    result.fold(
-      (failure) {
-        state = AuthState.error(message: failure.message);
-      },
-      (response) {
-        state = AuthState.authenticated(
-          user: response.user,
-          token: response.token,
-        );
-      },
+  AuthState copyWith({
+    fb.User? user,
+    bool? isLoading,
+    String? error,
+    bool? isInitialized,
+  }) {
+    return AuthState(
+      user: user ?? this.user,
+      isLoading: isLoading ?? this.isLoading,
+      error: error ?? this.error,
+      isInitialized: isInitialized ?? this.isInitialized,
     );
   }
+}
 
-  Future<void> signIn(LoginRequest request) async {
-    if (_repository == null) return;
-    state = const AuthState.loading();
-    final result = await _repository!.signIn(request);
-    
-    result.fold(
-      (failure) {
-        state = AuthState.error(message: failure.message);
-      },
-      (response) {
-        state = AuthState.authenticated(
-          user: response.user,
-          token: response.token,
+class AuthNotifier extends StateNotifier<AuthState> {
+  final fb.FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
+
+  AuthNotifier(this._auth, this._firestore) : super(const AuthState()) {
+    _auth.authStateChanges().listen((user) {
+      state = state.copyWith(user: user, isInitialized: true);
+    });
+  }
+
+  Future<bool> signIn(String email, String password) async {
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+      
+      // ✅ ตรวจสอบ credentials จริง
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      
+      if (credential.user != null) {
+        state = state.copyWith(
+          user: credential.user,
+          isLoading: false,
+          isInitialized: true,
         );
-      },
-    );
+        return true;
+      }
+      return false;
+    } on fb.FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'ไม่พบผู้ใช้นี้ในระบบ';
+          break;
+        case 'wrong-password':
+          errorMessage = 'รหัสผ่านไม่ถูกต้อง';
+          break;
+        case 'invalid-email':
+          errorMessage = 'อีเมลไม่ถูกต้อง';
+          break;
+        case 'user-disabled':
+          errorMessage = 'บัญชีผู้ใช้ถูกระงับการใช้งาน';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'พยายามเข้าสู่ระบบมากเกินไป กรุณาลองใหม่ภายหลัง';
+          break;
+        default:
+          errorMessage = 'เกิดข้อผิดพลาด: ${e.message}';
+      }
+      state = state.copyWith(isLoading: false, error: errorMessage);
+      return false;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+      return false;
+    }
+  }
+
+  Future<bool> signUp(String email, String password, String name, String role, String factoryId) async {
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+      
+      // ✅ ตรวจสอบ Factory ID
+      final factoryDoc = await _firestore.collection('factories').doc(factoryId).get();
+      if (!factoryDoc.exists) {
+        state = state.copyWith(isLoading: false, error: 'Factory ID ไม่ถูกต้อง');
+        return false;
+      }
+      
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      
+      if (credential.user != null) {
+        await _firestore.collection('users').doc(credential.user!.uid).set({
+          'uid': credential.user!.uid,
+          'name': name,
+          'email': email,
+          'role': role,
+          'factory_id': factoryId,
+          'preferred_language': 'th',
+          'active': true,
+          'created_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        
+        state = state.copyWith(
+          user: credential.user,
+          isLoading: false,
+          isInitialized: true,
+        );
+        return true;
+      }
+      return false;
+    } on fb.FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'email-already-in-use':
+          errorMessage = 'อีเมลนี้ถูกใช้งานแล้ว';
+          break;
+        case 'invalid-email':
+          errorMessage = 'อีเมลไม่ถูกต้อง';
+          break;
+        case 'weak-password':
+          errorMessage = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+          break;
+        default:
+          errorMessage = 'เกิดข้อผิดพลาด: ${e.message}';
+      }
+      state = state.copyWith(isLoading: false, error: errorMessage);
+      return false;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+      return false;
+    }
   }
 
   Future<void> signOut() async {
-    if (_repository == null) return;
-    state = const AuthState.loading();
-    final result = await _repository!.signOut();
-    
-    result.fold(
-      (failure) {
-        state = AuthState.error(message: failure.message);
-      },
-      (_) {
-        state = const AuthState.unauthenticated(message: 'Signed out successfully');
-      },
-    );
+    try {
+      state = state.copyWith(isLoading: true);
+      await _auth.signOut();
+      state = const AuthState(isInitialized: true);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: 'ออกจากระบบล้มเหลว');
+    }
   }
 
-  Future<void> resetPassword(ResetPasswordRequest request) async {
-    if (_repository == null) return;
-    state = const AuthState.loading();
-    final result = await _repository!.resetPassword(request);
+  Future<void> updateProfile(String name, String preferredLanguage) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
     
-    result.fold(
-      (failure) {
-        state = AuthState.error(message: failure.message);
-      },
-      (_) {
-        state = const AuthState.unauthenticated(
-          message: 'Password reset email sent. Please check your inbox.',
-        );
-      },
-    );
+    try {
+      await _firestore.collection('users').doc(user.uid).update({
+        'name': name,
+        'preferred_language': preferredLanguage,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      state = state.copyWith(error: 'อัปเดตโปรไฟล์ล้มเหลว');
+    }
   }
 
-  Future<void> getCurrentUser() async {
-    if (_repository == null) return;
-    state = const AuthState.loading();
-    final result = await _repository!.getCurrentUser();
-    
-    result.fold(
-      (failure) {
-        state = const AuthState.unauthenticated(message: null);
-      },
-      (response) {
-        if (response != null) {
-          state = AuthState.authenticated(
-            user: response.user,
-            token: response.token,
-          );
-        } else {
-          state = const AuthState.unauthenticated(message: null);
-        }
-      },
-    );
-  }
-
-  Future<void> updateUserProfile({
-    required String userId,
-    required String name,
-    required String preferredLanguage,
-  }) async {
-    if (_repository == null || state is! AuthAuthenticated) return;
-
-    final result = await _repository!.updateUserProfile(
-      userId: userId,
-      name: name,
-      preferredLanguage: preferredLanguage,
-    );
-
-    result.fold(
-      (failure) {
-        state = AuthState.error(message: failure.message);
-      },
-      (_) {
-        final currentState = state as AuthAuthenticated;
-        final updatedUser = currentState.user.copyWith(
-          name: name,
-          preferredLanguage: preferredLanguage,
-        );
-        state = AuthState.authenticated(
-          user: updatedUser,
-          token: currentState.token,
-        );
-      },
-    );
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return false;
+      
+      // Re-authenticate
+      final credential = fb.EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+      
+      await user.updatePassword(newPassword);
+      return true;
+    } catch (e) {
+      state = state.copyWith(error: 'เปลี่ยนรหัสผ่านล้มเหลว');
+      return false;
+    }
   }
 
   void clearError() {
-    if (state is AuthError) {
-      state = const AuthState.initial();
+    state = state.copyWith(error: null);
+  }
+
+  Future<Map<String, dynamic>?> getUserData(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 }
 
-// Auth State provider
-final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  final repoAsync = ref.watch(authRepositoryProvider);
-  return repoAsync.when(
-    data: (repo) => AuthNotifier(repo),
-    error: (_, __) => AuthNotifier(null),
-    loading: () => AuthNotifier(null),
-  );
+// Providers
+final currentUserProvider = Provider<fb.User?>((ref) {
+  return ref.watch(authStateProvider).user;
 });
 
-// Current user provider
-final currentUserProvider = Provider<User?>((ref) {
-  final authState = ref.watch(authStateProvider);
-  return authState.maybeMap(
-    authenticated: (state) => state.user,
-    orElse: () => null,
-  );
+final currentUserDataProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return null;
+  final notifier = ref.read(authStateProvider.notifier);
+  return await notifier.getUserData(user.uid);
 });
 
-// Auth token provider
-final authTokenProvider = Provider<String?>((ref) {
-  final authState = ref.watch(authStateProvider);
-  return authState.maybeMap(
-    authenticated: (state) => state.token,
-    orElse: () => null,
-  );
-});
-
-// Check if user is authenticated
 final isAuthenticatedProvider = Provider<bool>((ref) {
-  final authState = ref.watch(authStateProvider);
-  return authState.isAuthenticated;
+  return ref.watch(authStateProvider).isAuthenticated;
 });
 
-// Check if loading
 final isLoadingProvider = Provider<bool>((ref) {
-  final authState = ref.watch(authStateProvider);
-  return authState.isLoading;
+  return ref.watch(authStateProvider).isLoading;
+});
+
+final authErrorProvider = Provider<String?>((ref) {
+  return ref.watch(authStateProvider).error;
 });

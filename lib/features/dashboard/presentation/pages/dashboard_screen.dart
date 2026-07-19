@@ -1,422 +1,339 @@
-// lib/features/dashboard/presentation/pages/dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../products/presentation/providers/product_providers.dart';
+import '../../../stock_in/presentation/providers/stock_in_providers.dart';
+import '../../../stock_out/presentation/providers/stock_out_providers.dart';
 
-import '../providers/dashboard_providers.dart';
-import '../widgets/summary_card.dart';
-import '../widgets/low_stock_alerts.dart';
-import '../widgets/stock_chart.dart';
-
-class DashboardScreen extends ConsumerStatefulWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({Key? key}) : super(key: key);
 
   @override
-  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  final _formatter = NumberFormat('#,##0.0', 'en_US');
-
-  @override
-  void initState() {
-    super.initState();
-    // Refresh dashboard on load
-    Future.microtask(() {
-      ref.refresh(dashboardSummaryProvider(ref.watch(dateFilterProvider)));
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filter = ref.watch(dateFilterProvider);
-    final summaryAsync = ref.watch(dashboardSummaryProvider(filter));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final productsAsync = ref.watch(productListProvider);
+    final stockInAsync = ref.watch(stockInListProvider);
+    final stockOutAsync = ref.watch(stockOutListProvider);
+    final userDataAsync = ref.watch(currentUserDataProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
-        centerTitle: true,
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.settings),
             onPressed: () {
-              ref.refresh(dashboardSummaryProvider(filter));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Refreshing dashboard...'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
+              context.push('/settings');
             },
           ),
           IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () => _showFilterDialog(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.download),
-            onPressed: () => _showExportDialog(context),
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await ref.read(authStateProvider.notifier).signOut();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
           ),
         ],
       ),
-      body: summaryAsync.when(
-        data: (summary) {
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.refresh(dashboardSummaryProvider(filter));
-            },
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Summary Cards
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SummaryCard(
-                          title: 'Total In',
-                          value: '${_formatter.format(summary.totalStockIn)} KG',
-                          icon: Icons.arrow_downward,
-                          color: Colors.green,
-                          subtitle: '${summary.totalEntries} entries',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: SummaryCard(
-                          title: 'Total Out',
-                          value: '${_formatter.format(summary.totalStockOut)} KG',
-                          icon: Icons.arrow_upward,
-                          color: Colors.red,
-                          subtitle: '${summary.totalEntries} entries',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SummaryCard(
-                          title: 'Current Balance',
-                          value: '${_formatter.format(summary.totalBalance)} KG',
-                          icon: Icons.inventory_2,
-                          color: summary.totalBalance < 0 ? Colors.red : Colors.blue,
-                          subtitle: '${summary.totalProducts} products',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: SummaryCard(
-                          title: 'Products',
-                          value: summary.totalProducts.toString(),
-                          icon: Icons.category,
-                          color: Colors.purple,
-                          subtitle: 'Active products',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Filter info
-                  if (filter.hasFilter) ...[
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue[200]!),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.filter_alt, color: Colors.blue),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Filtered: ${filter.startDate != null ? DateFormat('dd/MM/yyyy').format(filter.startDate!) : 'Start'} - ${filter.endDate != null ? DateFormat('dd/MM/yyyy').format(filter.endDate!) : 'End'}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close, size: 16),
-                            onPressed: () {
-                              ref.read(dateFilterProvider.notifier).clearFilter();
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Low Stock Alerts
-                  const LowStockAlerts(threshold: 100),
-                  const SizedBox(height: 16),
-
-                  // Stock Chart
-                  const StockChart(),
-                  const SizedBox(height: 16),
-
-                  // Product Summary Table
-                  _buildProductTable(summary),
-
-                  // Last updated
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16.0),
-                    child: Text(
-                      'Last updated: ${DateFormat('dd/MM/yyyy HH:mm:ss').format(summary.lastUpdated)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
-        ),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                'Error loading dashboard',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.red,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                error.toString(),
-                style: Theme.of(context).textTheme.bodySmall,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  ref.refresh(dashboardSummaryProvider(filter));
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProductTable(DashboardSummary summary) {
-    return Card(
-      child: Padding(
+      body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            userDataAsync.when(
+              data: (userData) {
+                final userName = userData?['name'] ?? 'User';
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green[700]!, Colors.green[400]!],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Welcome, $userName! 👋',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Fruit Factory Stock',
+                        style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              loading: () => Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green[700]!, Colors.green[400]!],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Loading...',
+                      style: TextStyle(color: Colors.white, fontSize: 20),
+                    ),
+                    Text(
+                      'Fruit Factory Stock',
+                      style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                    ),
+                  ],
+                ),
+              ),
+              error: (error, stack) => Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green[700]!, Colors.green[400]!],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Welcome! 👋',
+                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      'Fruit Factory Stock',
+                      style: TextStyle(color: Colors.white.withOpacity(0.9)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Quick Actions
             const Text(
-              'Product Details',
+              'Quick Actions',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 16,
-                columns: const [
-                  DataColumn(label: Text('Code')),
-                  DataColumn(label: Text('Product')),
-                  DataColumn(
-                    label: Text('In (KG)'),
-                    numeric: true,
-                  ),
-                  DataColumn(
-                    label: Text('Out (KG)'),
-                    numeric: true,
-                  ),
-                  DataColumn(
-                    label: Text('Balance (KG)'),
-                    numeric: true,
-                  ),
-                  DataColumn(label: Text('Status')),
-                ],
-                rows: summary.productSummaries.map((product) {
-                  final status = product.balance <= 0
-                      ? 'Out of Stock'
-                      : product.balance <= 100
-                          ? 'Low Stock'
-                          : 'In Stock';
-                  final statusColor = product.balance <= 0
-                      ? Colors.red
-                      : product.balance <= 100
-                          ? Colors.orange
-                          : Colors.green;
-
-                  return DataRow(
-                    cells: [
-                      DataCell(Text(product.productCode)),
-                      DataCell(Text(product.productName)),
-                      DataCell(
-                        Text(
-                          product.totalIn.toStringAsFixed(1),
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          product.totalOut.toStringAsFixed(1),
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          product.balance.toStringAsFixed(1),
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: product.balance < 0 ? Colors.red : null,
-                          ),
-                        ),
-                      ),
-                      DataCell(
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            status,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: statusColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showFilterDialog(BuildContext context) {
-    final filter = ref.read(dateFilterProvider);
-    DateTime? startDate = filter.startDate;
-    DateTime? endDate = filter.endDate;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Filter Dashboard'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
+            Row(
               children: [
-                ListTile(
-                  title: Text(
-                    'Start Date: ${startDate != null ? DateFormat('dd/MM/yyyy').format(startDate) : 'Not set'}',
+                Expanded(
+                  child: _buildQuickActionCard(
+                    context,
+                    icon: Icons.add_shopping_cart,
+                    title: 'Stock In',
+                    color: Colors.blue,
+                    onTap: () {
+                      context.push('/stock-in');
+                    },
                   ),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                    );
-                    if (date != null) {
-                      setState(() => startDate = date);
-                    }
-                  },
                 ),
-                ListTile(
-                  title: Text(
-                    'End Date: ${endDate != null ? DateFormat('dd/MM/yyyy').format(endDate) : 'Not set'}',
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildQuickActionCard(
+                    context,
+                    icon: Icons.remove_shopping_cart,
+                    title: 'Stock Out',
+                    color: Colors.orange,
+                    onTap: () {
+                      context.push('/stock-out');
+                    },
                   ),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                    );
-                    if (date != null) {
-                      setState(() => endDate = date);
-                    }
-                  },
                 ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  ref.read(dateFilterProvider.notifier).clearFilter();
-                  Navigator.pop(context);
-                },
-                child: const Text('Clear'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildQuickActionCard(
+                    context,
+                    icon: Icons.inventory_2,
+                    title: 'Products',
+                    color: Colors.green,
+                    onTap: () {
+                      context.push('/products');
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildQuickActionCard(
+                    context,
+                    icon: Icons.assessment,
+                    title: 'Reports',
+                    color: Colors.purple,
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Reports coming soon!')),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Statistics
+            const Text(
+              'Statistics',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
-              ElevatedButton(
-                onPressed: () {
-                  ref.read(dateFilterProvider.notifier).updateStartDate(startDate);
-                  ref.read(dateFilterProvider.notifier).updateEndDate(endDate);
-                  Navigator.pop(context);
-                },
-                child: const Text('Apply'),
+            ),
+            const SizedBox(height: 12),
+            productsAsync.when(
+              data: (products) {
+                final totalProducts = products.length;
+                final totalStock = products.fold<int>(
+                  0,
+                  (sum, product) => sum + product.stock,
+                );
+                final stockInCount = stockInAsync.valueOrNull?.length ?? 0;
+                final stockOutCount = stockOutAsync.valueOrNull?.length ?? 0;
+                
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              totalProducts.toString(),
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
+                            ),
+                            const Text('Products', style: TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              stockInCount.toString(),
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                  ),
+                            ),
+                            const Text('Stock In', style: TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              stockOutCount.toString(),
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange,
+                                  ),
+                            ),
+                            const Text('Stock Out', style: TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              totalStock.toString(),
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.purple,
+                                  ),
+                            ),
+                            const Text('Total Stock', style: TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              loading: () => Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: const Center(child: CircularProgressIndicator()),
               ),
-            ],
-          );
-        },
+              error: (error, stack) => Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: const Center(child: Text('Error loading statistics')),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  void _showExportDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Export Report'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
+  Widget _buildQuickActionCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
           children: [
-            ListTile(
-              leading: Icon(Icons.table_chart),
-              title: Text('Export as CSV'),
-              subtitle: Text('Compatible with Excel'),
-            ),
-            ListTile(
-              leading: Icon(Icons.picture_as_pdf),
-              title: Text('Export as PDF'),
-              subtitle: Text('Printable report'),
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
       ),
     );
   }
