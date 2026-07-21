@@ -1,15 +1,17 @@
-// lib/features/stock_out/data/models/stock_out_model.dart
 class StockOut {
   final String id;
   final String productId;
   final String productName;
   final String productCode;
-  final int quantity;
+  final double quantity;
   final String unit;
   final String? purpose;
+  final String? tankType;
+  final String? tankNumber;
   final String? note;
   final DateTime date;
   final String recordedBy;
+  final String? factoryId;
   final DateTime createdAt;
 
   StockOut({
@@ -20,9 +22,12 @@ class StockOut {
     required this.quantity,
     required this.unit,
     this.purpose,
+    this.tankType,
+    this.tankNumber,
     this.note,
     required this.date,
     required this.recordedBy,
+    this.factoryId,
     required this.createdAt,
   });
 
@@ -34,9 +39,12 @@ class StockOut {
     'quantity': quantity,
     'unit': unit,
     'purpose': purpose,
+    'tank_type': tankType,
+    'tank_number': tankNumber,
     'note': note,
     'date': date.toIso8601String(),
     'recorded_by': recordedBy,
+    'factoryId': factoryId,
     'created_at': createdAt.toIso8601String(),
   };
 
@@ -45,12 +53,15 @@ class StockOut {
     productId: json['product_id'] ?? '',
     productName: json['product_name'] ?? '',
     productCode: json['product_code'] ?? '',
-    quantity: json['quantity'] ?? 0,
+    quantity: (json['quantity'] as num?)?.toDouble() ?? 0,
     unit: json['unit'] ?? 'KG',
     purpose: json['purpose'],
+    tankType: json['tank_type'],
+    tankNumber: json['tank_number'],
     note: json['note'],
     date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
     recordedBy: json['recorded_by'] ?? '',
+    factoryId: json['factoryId'],
     createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
   );
 }

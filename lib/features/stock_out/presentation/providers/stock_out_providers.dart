@@ -1,15 +1,23 @@
-// lib/features/stock_out/presentation/providers/stock_out_providers.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/models/stock_out_model.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 
 final stockOutCollectionProvider = Provider<CollectionReference>((ref) {
-  return FirebaseFirestore.instance.collection('stock_out');
+  return FirebaseFirestore.instance.collection('stock_out_entries');
 });
 
 final stockOutListProvider = FutureProvider<List<StockOut>>((ref) async {
   final collection = ref.watch(stockOutCollectionProvider);
-  final snapshot = await collection.orderBy('date', descending: true).get();
+  final factoryId = ref.watch(currentFactoryIdProvider);
+  
+  if (factoryId == null) return [];
+  
+  final snapshot = await collection
+      .where('factoryId', isEqualTo: factoryId)
+      .orderBy('date', descending: true)
+      .get();
+      
   return snapshot.docs.map((doc) {
     final data = doc.data() as Map<String, dynamic>;
     return StockOut.fromJson(data);
@@ -26,20 +34,40 @@ class StockOutNotifier extends StateNotifier<List<StockOut>> {
   StockOutNotifier(this.ref) : super([]);
 
   Future<bool> addStockOut(StockOut stockOut) async {
-    // Check stock availability
+    final collection = ref.read(stockOutCollectionProvider);
+    final factoryId = ref.read(currentFactoryIdProvider);
+    
+    // ✅ ตรวจสอบ stock จาก product (คำนวณจาก stock_in - stock_out)
     final productRef = FirebaseFirestore.instance.collection('products').doc(stockOut.productId);
     final productDoc = await productRef.get();
-    final currentStock = productDoc.data()?['stock'] ?? 0;
+    final currentStock = (productDoc.data()?['stock'] as num?)?.toDouble() ?? 0;
     
     if (currentStock < stockOut.quantity) {
-      return false; // Insufficient stock
+      return false;
     }
 
-    final collection = ref.read(stockOutCollectionProvider);
-    await collection.doc(stockOut.id).set(stockOut.toJson());
-    state = [...state, stockOut];
+    // ✅ บันทึกพร้อม factoryId
+    final stockOutWithFactory = StockOut(
+      id: stockOut.id,
+      productId: stockOut.productId,
+      productName: stockOut.productName,
+      productCode: stockOut.productCode,
+      quantity: stockOut.quantity,
+      unit: stockOut.unit,
+      purpose: stockOut.purpose,
+      tankType: stockOut.tankType,
+      tankNumber: stockOut.tankNumber,
+      note: stockOut.note,
+      date: stockOut.date,
+      recordedBy: stockOut.recordedBy,
+      factoryId: factoryId,
+      createdAt: stockOut.createdAt,
+    );
     
-    // Update product stock
+    await collection.doc(stockOutWithFactory.id).set(stockOutWithFactory.toJson());
+    state = [...state, stockOutWithFactory];
+    
+    // ✅ Update product stock
     await productRef.update({
       'stock': FieldValue.increment(-stockOut.quantity),
     });
@@ -49,7 +77,18 @@ class StockOutNotifier extends StateNotifier<List<StockOut>> {
 
   Future<void> loadStockOut() async {
     final collection = ref.read(stockOutCollectionProvider);
-    final snapshot = await collection.orderBy('date', descending: true).get();
+    final factoryId = ref.read(currentFactoryIdProvider);
+    
+    if (factoryId == null) {
+      state = [];
+      return;
+    }
+    
+    final snapshot = await collection
+        .where('factoryId', isEqualTo: factoryId)
+        .orderBy('date', descending: true)
+        .get();
+        
     state = snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
       return StockOut.fromJson(data);

@@ -15,6 +15,13 @@ import '../../features/stock_in/presentation/pages/stock_in_history_screen.dart'
 import '../../features/stock_out/presentation/pages/stock_out_screen.dart';
 import '../../features/stock_out/presentation/pages/stock_out_history_screen.dart';
 import '../../features/settings/presentation/pages/settings_screen.dart';
+import '../../features/settings/presentation/pages/tank_settings_screen.dart';
+import '../../features/settings/presentation/pages/report_issue_screen.dart';
+import '../../features/settings/presentation/pages/purpose_settings_screen.dart';
+import '../../features/factory/presentation/pages/factory_select_screen.dart';
+import '../../features/factory/presentation/pages/create_factory_screen.dart';
+import '../../features/factory/presentation/pages/edit_factory_screen.dart';
+import '../../features/factory/domain/entities/factory.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -37,6 +44,86 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'signup',
         builder: (context, state) => const SignUpScreen(),
       ),
+      // Factory Routes
+      GoRoute(
+        path: '/factory/select',
+        name: 'factory-select',
+        builder: (context, state) => const FactorySelectScreen(),
+        redirect: (context, state) {
+          final isAuth = ref.read(isAuthenticatedProvider);
+          return isAuth ? null : '/login';
+        },
+      ),
+      GoRoute(
+        path: '/factory/create',
+        name: 'factory-create',
+        builder: (context, state) => const CreateFactoryScreen(),
+        redirect: (context, state) {
+          final isAuth = ref.read(isAuthenticatedProvider);
+          return isAuth ? null : '/login';
+        },
+      ),
+      GoRoute(
+        path: '/factory/edit',
+        name: 'factory-edit',
+        builder: (context, state) {
+          final factory = state.extra as Factory?;
+          if (factory == null) {
+            return const Scaffold(
+              body: Center(child: Text('ไม่พบข้อมูลโรงงาน')),
+            );
+          }
+          return EditFactoryScreen(factory: factory);
+        },
+        redirect: (context, state) {
+          final isAuth = ref.read(isAuthenticatedProvider);
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
+        },
+      ),
+      // Settings Sub-routes
+      GoRoute(
+        path: '/settings/tanks',
+        name: 'settings-tanks',
+        builder: (context, state) => const TankSettingsScreen(),
+        redirect: (context, state) {
+          final isAuth = ref.read(isAuthenticatedProvider);
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
+        },
+      ),
+      GoRoute(
+        path: '/settings/purposes',
+        name: 'settings-purposes',
+        builder: (context, state) => const PurposeSettingsScreen(),
+        redirect: (context, state) {
+          final isAuth = ref.read(isAuthenticatedProvider);
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
+        },
+      ),
+      GoRoute(
+        path: '/settings/report-issue',
+        name: 'settings-report-issue',
+        builder: (context, state) => const ReportIssueScreen(),
+        redirect: (context, state) {
+          final isAuth = ref.read(isAuthenticatedProvider);
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
+        },
+      ),
       // Dashboard (Protected)
       GoRoute(
         path: '/',
@@ -44,7 +131,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const DashboardScreen(),
         redirect: (context, state) {
           final isAuth = ref.read(isAuthenticatedProvider);
-          return isAuth ? null : '/login';
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
         },
       ),
       // Settings (Protected)
@@ -54,7 +145,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SettingsScreen(),
         redirect: (context, state) {
           final isAuth = ref.read(isAuthenticatedProvider);
-          return isAuth ? null : '/login';
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
         },
       ),
       // Product Routes (Protected)
@@ -64,7 +159,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProductListScreen(),
         redirect: (context, state) {
           final isAuth = ref.read(isAuthenticatedProvider);
-          return isAuth ? null : '/login';
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
         },
       ),
       GoRoute(
@@ -73,7 +172,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProductFormScreen(),
         redirect: (context, state) {
           final isAuth = ref.read(isAuthenticatedProvider);
-          return isAuth ? null : '/login';
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
         },
       ),
       GoRoute(
@@ -85,7 +188,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
         redirect: (context, state) {
           final isAuth = ref.read(isAuthenticatedProvider);
-          return isAuth ? null : '/login';
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
         },
       ),
       // Stock In Routes (Protected)
@@ -95,7 +202,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const StockInScreen(),
         redirect: (context, state) {
           final isAuth = ref.read(isAuthenticatedProvider);
-          return isAuth ? null : '/login';
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
         },
       ),
       GoRoute(
@@ -104,7 +215,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const StockInHistoryScreen(),
         redirect: (context, state) {
           final isAuth = ref.read(isAuthenticatedProvider);
-          return isAuth ? null : '/login';
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
         },
       ),
       // Stock Out Routes (Protected)
@@ -114,7 +229,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const StockOutScreen(),
         redirect: (context, state) {
           final isAuth = ref.read(isAuthenticatedProvider);
-          return isAuth ? null : '/login';
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
         },
       ),
       GoRoute(
@@ -123,9 +242,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const StockOutHistoryScreen(),
         redirect: (context, state) {
           final isAuth = ref.read(isAuthenticatedProvider);
-          return isAuth ? null : '/login';
+          final hasFactory = ref.read(hasFactoryProvider);
+          
+          if (!isAuth) return '/login';
+          if (!hasFactory) return '/factory/select';
+          return null;
         },
       ),
     ],
+    redirect: (context, state) {
+      final isAuth = ref.read(isAuthenticatedProvider);
+      final hasFactory = ref.read(hasFactoryProvider);
+      final location = state.matchedLocation;
+      
+      if (!isAuth && location != '/login' && location != '/sign-up' && location != '/splash') {
+        return '/login';
+      }
+      
+      if (isAuth && !hasFactory && 
+          location != '/factory/select' && 
+          location != '/factory/create' &&
+          location != '/splash') {
+        return '/factory/select';
+      }
+      
+      return null;
+    },
   );
 });

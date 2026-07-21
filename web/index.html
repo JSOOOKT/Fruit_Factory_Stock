@@ -2,12 +2,68 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4CAF50">
   <title>Fruit Factory Stock</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
+  
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3E-DZUhGuKreJVqIhpDy-ypMglGYaKuY",
+      authDomain: "fruit-factory-stock-b2314.firebaseapp.com",
+      projectId: "fruit-factory-stock-b2314",
+      storageBucket: "fruit-factory-stock-b2314.firebasestorage.app",
+      messagingSenderId: "120471330340",
+      appId: "1:120471330340:web:a983a19344e0dacdcf82b1",
+      measurementId: "G-GDR992PERZ"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+  
+  <style>
+    body { margin: 0; padding: 0; }
+    #loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: 'Noto Sans Thai', sans-serif;
+      background: linear-gradient(135deg, #43a047, #2e7d32);
+      color: white;
+      margin: 0;
+    }
+    .loader {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
+  <div id="loading">
+    <div style="font-size:64px;">🏭</div>
+    <h1 style="font-size:28px;margin:10px 0;">Fruit Factory Stock</h1>
+    <p style="font-size:16px;opacity:0.8;">ระบบจัดการคลังสินค้า</p>
+    <div class="loader"></div>
+  </div>
+
   <script src="main.dart.js" type="application/javascript"></script>
 </body>
 </html>

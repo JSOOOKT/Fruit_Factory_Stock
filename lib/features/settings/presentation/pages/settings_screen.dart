@@ -1,9 +1,15 @@
-// lib/features/settings/presentation/pages/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../factory/presentation/providers/factory_providers.dart';
+import '../../../factory/data/repositories/factory_repository.dart';
+import '../../../factory/presentation/pages/edit_factory_screen.dart';
 import '../providers/language_provider.dart';
+import 'tank_settings_screen.dart';
+import 'report_issue_screen.dart';
+import 'purpose_settings_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -18,6 +24,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
+  String? _userRole;
 
   @override
   void initState() {
@@ -29,16 +36,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final userData = await ref.read(currentUserDataProvider.future);
     if (userData != null) {
       _nameController.text = userData['name'] ?? '';
+      _userRole = userData['role'] ?? 'recorder';
     }
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
-    super.dispose();
+  void _goToSwitchFactory() {
+    context.push('/factory/select');
+  }
+
+  void _goToEditFactory() {
+    final factory = ref.read(currentFactoryProvider).valueOrNull;
+    if (factory != null) {
+      context.push('/factory/edit', extra: factory);
+    }
+  }
+
+  void _goToTankSettings() {
+    context.push('/settings/tanks');
+  }
+
+  void _goToPurposeSettings() {
+    context.push('/settings/purposes');
+  }
+
+  void _goToReportIssue() {
+    context.push('/settings/report-issue');
   }
 
   Future<void> _updateProfile() async {
@@ -57,7 +79,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _isLoading = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('อัปเดตโปรไฟล์สำเร็จ'), backgroundColor: Colors.green),
+      const SnackBar(content: Text('✅ อัปเดตโปรไฟล์สำเร็จ'), backgroundColor: Colors.green),
     );
   }
 
@@ -87,15 +109,76 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('เปลี่ยนรหัสผ่านสำเร็จ'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('✅ เปลี่ยนรหัสผ่านสำเร็จ'), backgroundColor: Colors.green),
       );
       _currentPasswordController.clear();
       _newPasswordController.clear();
       _confirmPasswordController.clear();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('เปลี่ยนรหัสผ่านล้มเหลว'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('❌ เปลี่ยนรหัสผ่านล้มเหลว'), backgroundColor: Colors.red),
       );
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('⚠️ ลบบัญชีผู้ใช้'),
+        content: const Text(
+          'คุณแน่ใจหรือไม่ที่จะลบบัญชีนี้?\n'
+          'ข้อมูลทั้งหมดจะถูกลบอย่างถาวรและไม่สามารถกู้คืนได้',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ยกเลิก'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('ลบบัญชี'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final user = ref.read(currentUserProvider);
+      if (user != null) {
+        final repository = FactoryRepository();
+        await repository.deleteUserAccount(user.uid);
+        await user.delete();
+        await ref.read(authStateProvider.notifier).signOut();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ ลบบัญชีสำเร็จ'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.go('/login');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ ลบบัญชีล้มเหลว: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -103,6 +186,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final currentLang = ref.watch(languageProvider);
     final isThai = currentLang == 'th';
+    final currentFactory = ref.watch(currentFactoryProvider);
+    
+    final canEditFactory = _userRole == 'manager' || _userRole == 'admin';
 
     return Scaffold(
       appBar: AppBar(
@@ -114,6 +200,220 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // โรงงานปัจจุบัน
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isThai ? '🏭 โรงงานปัจจุบัน' : 'Current Factory',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    currentFactory.when(
+                      data: (factory) {
+                        if (factory == null) {
+                          return const Text('ยังไม่ได้เลือกโรงงาน');
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              factory.name,
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            Text('รหัส: ${factory.factoryCode}'),
+                            Text('ที่อยู่: ${factory.address}'),
+                            Text('เบอร์โทร: ${factory.phone}'),
+                            
+                            if (canEditFactory) ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 40,
+                                child: OutlinedButton.icon(
+                                  onPressed: _goToEditFactory,
+                                  icon: const Icon(Icons.edit, size: 18),
+                                  label: Text(isThai ? 'แก้ไขข้อมูลโรงงาน' : 'Edit Factory'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.green,
+                                    side: const BorderSide(color: Colors.green),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (_, __) => const Text('ไม่สามารถโหลดข้อมูลโรงงาน'),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    Text(
+                      isThai ? '🔄 สลับโรงงาน' : 'Switch Factory',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isThai 
+                          ? 'กดเพื่อเลือกโรงงานอื่นและกรอกรหัสผ่านใหม่'
+                          : 'Tap to select another factory and enter password',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton.icon(
+                        onPressed: _goToSwitchFactory,
+                        icon: const Icon(Icons.swap_horiz),
+                        label: Text(isThai ? 'ไปที่หน้าเลือกโรงงาน' : 'Go to Select Factory'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Tank Management
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isThai ? '🛢️ จัดการถังบรรจุ' : 'Tank Management',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isThai 
+                          ? 'เพิ่ม แก้ไข หรือลบ ประเภทถังและเลขถัง'
+                          : 'Add, edit, or delete tank types and numbers',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton.icon(
+                        onPressed: _goToTankSettings,
+                        icon: const Icon(Icons.inventory),
+                        label: Text(isThai ? 'จัดการถังบรรจุ' : 'Manage Tanks'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Purpose Management
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isThai ? '📝 จัดการวัตถุประสงค์' : 'Purpose Management',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isThai 
+                          ? 'เพิ่ม หรือลบ วัตถุประสงค์สำหรับการเบิกออก'
+                          : 'Add or delete purposes for stock out',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton.icon(
+                        onPressed: _goToPurposeSettings,
+                        icon: const Icon(Icons.info),
+                        label: Text(isThai ? 'จัดการวัตถุประสงค์' : 'Manage Purposes'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Report Issue
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isThai ? '📋 รายงานปัญหา' : 'Report Issue',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isThai 
+                          ? 'แจ้งปัญหาหรือข้อเสนอแนะถึงผู้ดูแลระบบ'
+                          : 'Report issues or suggestions to the administrator',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton.icon(
+                        onPressed: _goToReportIssue,
+                        icon: const Icon(Icons.report_problem),
+                        label: Text(isThai ? 'รายงานปัญหา' : 'Report Issue'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
             // Language Section
             Card(
               child: Padding(
@@ -122,7 +422,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isThai ? 'ภาษา' : 'Language',
+                      isThai ? '🌐 ภาษา' : 'Language',
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
@@ -162,7 +462,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isThai ? 'โปรไฟล์' : 'Profile',
+                      isThai ? '👤 โปรไฟล์' : 'Profile',
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
@@ -171,6 +471,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       decoration: InputDecoration(
                         labelText: isThai ? 'ชื่อผู้ใช้' : 'Username',
                         prefixIcon: const Icon(Icons.person),
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -203,7 +504,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isThai ? 'เปลี่ยนรหัสผ่าน' : 'Change Password',
+                      isThai ? '🔑 เปลี่ยนรหัสผ่าน' : 'Change Password',
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
@@ -212,6 +513,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       decoration: InputDecoration(
                         labelText: isThai ? 'รหัสผ่านปัจจุบัน' : 'Current Password',
                         prefixIcon: const Icon(Icons.lock),
+                        border: const OutlineInputBorder(),
                       ),
                       obscureText: true,
                     ),
@@ -221,6 +523,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       decoration: InputDecoration(
                         labelText: isThai ? 'รหัสผ่านใหม่' : 'New Password',
                         prefixIcon: const Icon(Icons.lock_outline),
+                        border: const OutlineInputBorder(),
                       ),
                       obscureText: true,
                     ),
@@ -230,6 +533,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       decoration: InputDecoration(
                         labelText: isThai ? 'ยืนยันรหัสผ่านใหม่' : 'Confirm New Password',
                         prefixIcon: const Icon(Icons.lock_outline),
+                        border: const OutlineInputBorder(),
                       ),
                       obscureText: true,
                     ),
@@ -255,6 +559,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             
             const SizedBox(height: 16),
             
+            // Delete Account Section
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isThai ? '🗑️ ลบบัญชี' : 'Delete Account',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isThai 
+                          ? 'การลบบัญชีจะลบข้อมูลทั้งหมดของคุณอย่างถาวร'
+                          : 'Deleting your account will permanently remove all your data',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _deleteAccount,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: Text(isThai ? 'ลบบัญชี' : 'Delete Account'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
             // Logout Button
             SizedBox(
               width: double.infinity,
@@ -268,10 +617,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: Colors.grey[800],
                   foregroundColor: Colors.white,
                 ),
-                child: Text(isThai ? 'ออกจากระบบ' : 'Logout'),
+                child: Text(isThai ? '🚪 ออกจากระบบ' : 'Logout'),
               ),
             ),
           ],
@@ -305,6 +654,5 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   void _changeLanguage(String lang) async {
     await ref.read(languageProvider.notifier).setLanguage(lang);
-    // TODO: Update app locale
   }
 }

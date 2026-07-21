@@ -1,9 +1,10 @@
+// lib/features/products/presentation/pages/product_form_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../providers/product_providers.dart';
-import '../../data/models/product_model.dart';  // ✅ Fixed path
+import '../../data/models/product_model.dart';
 
 class ProductFormScreen extends ConsumerStatefulWidget {
   final Product? existingProduct;
@@ -17,8 +18,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _codeController = TextEditingController();
-  final _unitController = TextEditingController(text: 'KG');
-  final _stockController = TextEditingController(text: '0');
   bool _isLoading = false;
 
   @override
@@ -27,8 +26,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     if (widget.existingProduct != null) {
       _nameController.text = widget.existingProduct!.name;
       _codeController.text = widget.existingProduct!.code;
-      _unitController.text = widget.existingProduct!.unit;
-      _stockController.text = widget.existingProduct!.stock.toString();
     }
   }
 
@@ -36,24 +33,22 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   void dispose() {
     _nameController.dispose();
     _codeController.dispose();
-    _unitController.dispose();
-    _stockController.dispose();
     super.dispose();
   }
 
   Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+
     final now = DateTime.now();
     final product = Product(
       id: widget.existingProduct?.id ?? const Uuid().v4(),
       name: _nameController.text.trim(),
       code: _codeController.text.trim().toUpperCase(),
-      unit: _unitController.text.trim(),
-      stock: int.tryParse(_stockController.text) ?? 0,
       createdAt: widget.existingProduct?.createdAt ?? now,
       updatedAt: now,
     );
+
     try {
       if (widget.existingProduct == null) {
         await ref.read(productNotifierProvider.notifier).addProduct(product);
@@ -64,7 +59,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.existingProduct == null ? 'Product created successfully' : 'Product updated successfully'),
+            content: Text(widget.existingProduct == null ? 'เพิ่มสินค้าสำเร็จ' : 'อัปเดตสินค้าสำเร็จ'),
             backgroundColor: Colors.green,
           ),
         );
@@ -84,7 +79,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final isEditing = widget.existingProduct != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Product' : 'Add Product'),
+        title: Text(isEditing ? 'แก้ไขสินค้า' : 'เพิ่มสินค้า'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
       ),
@@ -96,39 +91,24 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Product Name', prefixIcon: Icon(Icons.inventory_2)),
-                validator: (value) => value == null || value.isEmpty ? 'Product name is required' : null,
+                decoration: const InputDecoration(
+                  labelText: 'ชื่อสินค้า',
+                  prefixIcon: Icon(Icons.inventory_2),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => value == null || value.isEmpty ? 'กรุณากรอกชื่อสินค้า' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _codeController,
-                decoration: const InputDecoration(labelText: 'Product Code', prefixIcon: Icon(Icons.code), hintText: 'e.g., RD-001'),
-                validator: (value) => value == null || value.isEmpty ? 'Product code is required' : null,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _unitController,
-                      decoration: const InputDecoration(labelText: 'Unit', prefixIcon: Icon(Icons.straighten)),
-                      validator: (value) => value == null || value.isEmpty ? 'Unit is required' : null,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _stockController,
-                      decoration: const InputDecoration(labelText: 'Stock', prefixIcon: Icon(Icons.numbers)),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Stock is required';
-                        if (int.tryParse(value) == null) return 'Must be a number';
-                        return null;
-                      },
-                    ),
-                  ),
-                ],
+                decoration: const InputDecoration(
+                  labelText: 'รหัสสินค้า',
+                  prefixIcon: Icon(Icons.code),
+                  border: OutlineInputBorder(),
+                  hintText: 'เช่น APPLE-001',
+                ),
+                textCapitalization: TextCapitalization.characters,
+                validator: (value) => value == null || value.isEmpty ? 'กรุณากรอกรหัสสินค้า' : null,
               ),
               const Spacer(),
               SizedBox(
@@ -136,10 +116,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveProduct,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(isEditing ? 'Update Product' : 'Add Product'),
+                      : Text(isEditing ? 'อัปเดตสินค้า' : 'เพิ่มสินค้า'),
                 ),
               ),
               const SizedBox(height: 16),
@@ -148,7 +131,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 height: 50,
                 child: OutlinedButton(
                   onPressed: () => context.pop(),
-                  child: const Text('Cancel'),
+                  child: const Text('ยกเลิก'),
                 ),
               ),
             ],

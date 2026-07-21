@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/enums/user_role.dart';
 import '../providers/auth_providers.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
@@ -16,10 +17,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _factoryIdController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
-  String _selectedRole = 'recorder';
+  UserRole _selectedRole = UserRole.recorder;
 
   @override
   void dispose() {
@@ -27,7 +27,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _factoryIdController.dispose();
     super.dispose();
   }
 
@@ -36,7 +35,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('รหัสผ่านไม่ตรงกัน / Passwords do not match')),
+        const SnackBar(content: Text('รหัสผ่านไม่ตรงกัน'), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -47,14 +46,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       _emailController.text.trim(),
       _passwordController.text,
       _nameController.text.trim(),
-      _selectedRole,
-      _factoryIdController.text.trim(),
+      _selectedRole.value,
     );
     
     setState(() => _isLoading = false);
 
     if (success && mounted) {
-      context.go('/');
+      context.go('/factory/select');
     }
   }
 
@@ -65,7 +63,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Account'),
+        title: const Text('สร้างบัญชีผู้ใช้'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
       ),
@@ -79,76 +77,65 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 children: [
                   const SizedBox(height: 24),
                   
-                  // Full Name
                   TextFormField(
                     controller: _nameController,
                     decoration: const InputDecoration(
-                      labelText: 'ชื่อ-นามสกุล / Full Name',
+                      labelText: 'ชื่อ-นามสกุล',
                       prefixIcon: Icon(Icons.person),
+                      border: OutlineInputBorder(),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'กรุณากรอกชื่อ / Name is required';
+                        return 'กรุณากรอกชื่อ';
                       }
                       if (value.length < 2) {
-                        return 'ชื่อต้องมีอย่างน้อย 2 ตัวอักษร / Name must be at least 2 characters';
+                        return 'ชื่อต้องมีอย่างน้อย 2 ตัวอักษร';
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 16),
                   
-                  // Email
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
-                      labelText: 'อีเมล / Email',
+                      labelText: 'อีเมล',
                       prefixIcon: Icon(Icons.email),
+                      border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'กรุณากรอกอีเมล / Email is required';
+                        return 'กรุณากรอกอีเมล';
                       }
                       if (!value.contains('@')) {
-                        return 'กรุณากรอกอีเมลให้ถูกต้อง / Enter a valid email';
+                        return 'กรุณากรอกอีเมลให้ถูกต้อง';
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 16),
                   
-                  // Factory ID
-                  TextFormField(
-                    controller: _factoryIdController,
-                    decoration: const InputDecoration(
-                      labelText: 'รหัสโรงงาน / Factory ID',
-                      prefixIcon: Icon(Icons.factory),
-                      hintText: 'กรุณากรอก ID ของโรงงาน / Enter your factory ID',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'กรุณากรอกรหัสโรงงาน / Factory ID is required';
-                      }
-                      if (value.length < 3) {
-                        return 'รหัสโรงงานต้องมีอย่างน้อย 3 ตัวอักษร / Factory ID must be at least 3 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Role
-                  DropdownButtonFormField<String>(
+                  DropdownButtonFormField<UserRole>(
                     value: _selectedRole,
                     decoration: const InputDecoration(
-                      labelText: 'บทบาท / Role',
+                      labelText: 'บทบาท',
                       prefixIcon: Icon(Icons.admin_panel_settings),
+                      border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'recorder', child: Text('พนักงานบันทึก / Recorder')),
-                      DropdownMenuItem(value: 'supervisor', child: Text('หัวหน้ากะ / Supervisor')),
-                      DropdownMenuItem(value: 'manager', child: Text('ผู้จัดการ / Manager')),
+                      DropdownMenuItem(
+                        value: UserRole.recorder,
+                        child: Text('พนักงานบันทึกข้อมูล'),
+                      ),
+                      DropdownMenuItem(
+                        value: UserRole.manager,
+                        child: Text('ผู้จัดการ'),
+                      ),
+                      DropdownMenuItem(
+                        value: UserRole.admin,
+                        child: Text('ผู้ดูแลระบบ'),
+                      ),
                     ],
                     onChanged: (value) {
                       if (value != null) setState(() => _selectedRole = value);
@@ -156,11 +143,10 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // Password
                   TextFormField(
                     controller: _passwordController,
                     decoration: InputDecoration(
-                      labelText: 'รหัสผ่าน / Password',
+                      labelText: 'รหัสผ่าน',
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -168,31 +154,32 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                         ),
                         onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                       ),
+                      border: OutlineInputBorder(),
                     ),
                     obscureText: !_isPasswordVisible,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'กรุณากรอกรหัสผ่าน / Password is required';
+                        return 'กรุณากรอกรหัสผ่าน';
                       }
                       if (value.length < 6) {
-                        return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร / Password must be at least 6 characters';
+                        return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 16),
                   
-                  // Confirm Password
                   TextFormField(
                     controller: _confirmPasswordController,
                     decoration: const InputDecoration(
-                      labelText: 'ยืนยันรหัสผ่าน / Confirm Password',
+                      labelText: 'ยืนยันรหัสผ่าน',
                       prefixIcon: Icon(Icons.lock_outline),
+                      border: OutlineInputBorder(),
                     ),
                     obscureText: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'กรุณายืนยันรหัสผ่าน / Please confirm your password';
+                        return 'กรุณายืนยันรหัสผ่าน';
                       }
                       return null;
                     },
@@ -224,7 +211,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   
                   const SizedBox(height: 24),
                   
-                  // Create Account Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -236,19 +222,18 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                       ),
                       child: _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('สร้างบัญชี / Create Account'),
+                          : const Text('สร้างบัญชีผู้ใช้'),
                     ),
                   ),
                   const SizedBox(height: 16),
                   
-                  // Sign In Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('มีบัญชีแล้ว? / Already have an account?'),
+                      const Text('มีบัญชีแล้ว?'),
                       TextButton(
                         onPressed: () => context.pop(),
-                        child: const Text('เข้าสู่ระบบ / Sign In'),
+                        child: const Text('เข้าสู่ระบบ'),
                       ),
                     ],
                   ),

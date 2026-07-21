@@ -1,43 +1,45 @@
-// lib/features/dashboard/presentation/providers/dashboard_providers.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../data/services/dashboard_service.dart';
 import '../../data/models/dashboard_summary.dart';
 
-// Service provider
 final dashboardServiceProvider = Provider<DashboardService>((ref) {
   return DashboardService();
 });
 
-// Dashboard summary provider with filter
-final dashboardSummaryProvider =
-    FutureProvider.family<DashboardSummary, DateFilter>((ref, filter) async {
+final dashboardSummaryProvider = FutureProvider.family<DashboardSummary, DateFilter>((ref, filter) async {
   final service = ref.watch(dashboardServiceProvider);
+  final factoryId = ref.watch(currentFactoryIdProvider);
+  
+  // ✅ ส่ง factoryId ไปยัง service เพื่อกรองข้อมูล
   return await service.getDashboardSummary(
     startDate: filter.startDate,
     endDate: filter.endDate,
+    factoryId: factoryId,
   );
 });
 
-// Low stock alerts provider
-final lowStockAlertsProvider =
-    FutureProvider.family<List<LowStockAlert>, double>((ref, threshold) async {
+final lowStockAlertsProvider = FutureProvider.family<List<LowStockAlert>, double>((ref, threshold) async {
   final service = ref.watch(dashboardServiceProvider);
-  return await service.getLowStockAlerts(threshold: threshold);
+  final factoryId = ref.watch(currentFactoryIdProvider);
+  return await service.getLowStockAlerts(
+    threshold: threshold,
+    factoryId: factoryId,
+  );
 });
 
-// CSV export provider
 final csvReportProvider = FutureProvider.family<String, DateFilter>((ref, filter) async {
   final service = ref.watch(dashboardServiceProvider);
+  final factoryId = ref.watch(currentFactoryIdProvider);
   return await service.generateCSVReport(
     startDate: filter.startDate,
     endDate: filter.endDate,
+    factoryId: factoryId,
   );
 });
 
-// Date filter state
 class DateFilter {
   final DateTime? startDate;
   final DateTime? endDate;
@@ -57,7 +59,6 @@ class DateFilter {
   }
 }
 
-// Date filter notifier
 class DateFilterNotifier extends StateNotifier<DateFilter> {
   DateFilterNotifier() : super(const DateFilter());
 
@@ -74,12 +75,10 @@ class DateFilterNotifier extends StateNotifier<DateFilter> {
   }
 }
 
-final dateFilterProvider =
-    StateNotifierProvider<DateFilterNotifier, DateFilter>((ref) {
+final dateFilterProvider = StateNotifierProvider<DateFilterNotifier, DateFilter>((ref) {
   return DateFilterNotifier();
 });
 
-// Chart data models
 class ChartData {
   final String label;
   final double value;
@@ -88,7 +87,6 @@ class ChartData {
   ChartData({required this.label, required this.value, required this.color});
 }
 
-// Chart data provider
 final stockChartDataProvider = Provider<List<ChartData>>((ref) {
   final summary = ref.watch(dashboardSummaryProvider(
     ref.watch(dateFilterProvider),

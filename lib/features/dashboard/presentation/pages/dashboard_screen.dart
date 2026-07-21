@@ -62,7 +62,7 @@ class DashboardScreen extends ConsumerWidget {
                         'Welcome, $userName! 👋',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 20.0,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -109,7 +109,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     const Text(
                       'Welcome! 👋',
-                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.bold),
                     ),
                     Text(
                       'Fruit Factory Stock',
@@ -203,8 +203,8 @@ class DashboardScreen extends ConsumerWidget {
             productsAsync.when(
               data: (products) {
                 final totalProducts = products.length;
-                final totalStock = products.fold<int>(
-                  0,
+                final totalStock = products.fold<double>(
+                  0.0,
                   (sum, product) => sum + product.stock,
                 );
                 final stockInCount = stockInAsync.valueOrNull?.length ?? 0;

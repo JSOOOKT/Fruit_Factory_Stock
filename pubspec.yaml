@@ -47,6 +47,8 @@ dependencies:
   printing: ^5.13.0
   share_plus: ^10.0.0
   path_provider: ^2.1.6
+  flutter_dotenv: ^6.0.1
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:

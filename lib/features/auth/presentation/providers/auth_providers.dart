@@ -1,4 +1,3 @@
-// lib/features/auth/presentation/providers/auth_providers.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,12 +24,14 @@ class AuthState {
   final bool isLoading;
   final String? error;
   final bool isInitialized;
+  final String? factoryId;
 
   const AuthState({
     this.user,
     this.isLoading = false,
     this.error,
     this.isInitialized = false,
+    this.factoryId,
   });
 
   bool get isAuthenticated => user != null && isInitialized;
@@ -42,12 +43,14 @@ class AuthState {
     bool? isLoading,
     String? error,
     bool? isInitialized,
+    String? factoryId,
   }) {
     return AuthState(
       user: user ?? this.user,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
       isInitialized: isInitialized ?? this.isInitialized,
+      factoryId: factoryId ?? this.factoryId,
     );
   }
 }
@@ -58,21 +61,50 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   AuthNotifier(this._auth, this._firestore) : super(const AuthState()) {
     _auth.authStateChanges().listen((user) {
-      state = state.copyWith(user: user, isInitialized: true);
+      if (user != null) {
+        _loadUserFactoryId(user.uid);
+      } else {
+        state = state.copyWith(user: user, isInitialized: true, factoryId: null);
+      }
     });
+  }
+
+  Future<void> _loadUserFactoryId(String uid) async {
+    try {
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data();
+        final factoryId = data?['factoryId'] ?? data?['factory_id'] as String?;
+        state = state.copyWith(
+          user: _auth.currentUser,
+          isInitialized: true,
+          factoryId: factoryId,
+        );
+      } else {
+        state = state.copyWith(
+          user: _auth.currentUser,
+          isInitialized: true,
+        );
+      }
+    } catch (e) {
+      state = state.copyWith(
+        user: _auth.currentUser,
+        isInitialized: true,
+      );
+    }
   }
 
   Future<bool> signIn(String email, String password) async {
     try {
       state = state.copyWith(isLoading: true, error: null);
       
-      // ✅ ตรวจสอบ credentials จริง
       final credential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
       
       if (credential.user != null) {
+        await _loadUserFactoryId(credential.user!.uid);
         state = state.copyWith(
           user: credential.user,
           isLoading: false,
@@ -110,16 +142,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> signUp(String email, String password, String name, String role, String factoryId) async {
+  Future<bool> signUp(String email, String password, String name, String role) async {
     try {
       state = state.copyWith(isLoading: true, error: null);
-      
-      // ✅ ตรวจสอบ Factory ID
-      final factoryDoc = await _firestore.collection('factories').doc(factoryId).get();
-      if (!factoryDoc.exists) {
-        state = state.copyWith(isLoading: false, error: 'Factory ID ไม่ถูกต้อง');
-        return false;
-      }
       
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -132,7 +157,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'name': name,
           'email': email,
           'role': role,
-          'factory_id': factoryId,
+          'factoryId': null,
           'preferred_language': 'th',
           'active': true,
           'created_at': FieldValue.serverTimestamp(),
@@ -143,6 +168,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: credential.user,
           isLoading: false,
           isInitialized: true,
+          factoryId: null,
         );
         return true;
       }
@@ -200,7 +226,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = _auth.currentUser;
       if (user == null) return false;
       
-      // Re-authenticate
       final credential = fb.EmailAuthProvider.credential(
         email: user.email!,
         password: currentPassword,
@@ -230,6 +255,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return null;
     }
   }
+
+  Future<void> updateFactoryId(String factoryId) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      await _firestore.collection('users').doc(user.uid).update({
+        'factoryId': factoryId,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      state = state.copyWith(factoryId: factoryId);
+    } catch (e) {
+      state = state.copyWith(error: 'อัปเดตโรงงานล้มเหลว');
+    }
+  }
 }
 
 // Providers
@@ -244,6 +284,10 @@ final currentUserDataProvider = FutureProvider<Map<String, dynamic>?>((ref) asyn
   return await notifier.getUserData(user.uid);
 });
 
+final currentFactoryIdProvider = Provider<String?>((ref) {
+  return ref.watch(authStateProvider).factoryId;
+});
+
 final isAuthenticatedProvider = Provider<bool>((ref) {
   return ref.watch(authStateProvider).isAuthenticated;
 });
@@ -254,4 +298,8 @@ final isLoadingProvider = Provider<bool>((ref) {
 
 final authErrorProvider = Provider<String?>((ref) {
   return ref.watch(authStateProvider).error;
+});
+
+final hasFactoryProvider = Provider<bool>((ref) {
+  return ref.watch(authStateProvider).factoryId != null;
 });
