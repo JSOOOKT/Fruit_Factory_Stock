@@ -7,7 +7,7 @@ class StockOut {
   final String unit;
   final String? purpose;
   final String? tankType;
-  final String? tankNumber;
+  final String? tankNumber;  // ✅ เพิ่ม tankNumber
   final String? note;
   final DateTime date;
   final String recordedBy;

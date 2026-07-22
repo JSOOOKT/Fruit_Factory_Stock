@@ -1,4 +1,3 @@
-// lib/features/products/presentation/pages/product_form_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,29 +44,47 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       id: widget.existingProduct?.id ?? const Uuid().v4(),
       name: _nameController.text.trim(),
       code: _codeController.text.trim().toUpperCase(),
+      stock: widget.existingProduct?.stock ?? 0.0,
+      unit: widget.existingProduct?.unit ?? 'KG',
+      factoryId: widget.existingProduct?.factoryId,
       createdAt: widget.existingProduct?.createdAt ?? now,
       updatedAt: now,
+      createdBy: widget.existingProduct?.createdBy,
+      updatedBy: widget.existingProduct?.updatedBy,
+      history: widget.existingProduct?.history,
     );
 
     try {
       if (widget.existingProduct == null) {
         await ref.read(productNotifierProvider.notifier).addProduct(product);
-      } else {
-        await ref.read(productNotifierProvider.notifier).updateProduct(product);
-      }
-      ref.refresh(productListProvider);
-      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.existingProduct == null ? 'เพิ่มสินค้าสำเร็จ' : 'อัปเดตสินค้าสำเร็จ'),
+          const SnackBar(
+            content: Text('เพิ่มสินค้าสำเร็จ'),
             backgroundColor: Colors.green,
           ),
         );
+      } else {
+        await ref.read(productNotifierProvider.notifier).updateProduct(product);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('อัปเดตสินค้าสำเร็จ'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      
+      // ✅ รีเฟรช productListProvider
+      ref.refresh(productListProvider);
+      
+      if (mounted) {
         context.pop();
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('เกิดข้อผิดพลาด: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

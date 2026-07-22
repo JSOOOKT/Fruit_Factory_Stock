@@ -7,6 +7,9 @@ class Product {
   final String? factoryId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? createdBy;
+  final String? updatedBy;
+  final List<Map<String, dynamic>>? history;
 
   Product({
     required this.id,
@@ -17,6 +20,9 @@ class Product {
     this.factoryId,
     required this.createdAt,
     required this.updatedAt,
+    this.createdBy,
+    this.updatedBy,
+    this.history,
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +34,9 @@ class Product {
     'factoryId': factoryId,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
+    'created_by': createdBy,
+    'updated_by': updatedBy,
+    'history': history,
   };
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
@@ -39,6 +48,9 @@ class Product {
     factoryId: json['factoryId'],
     createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
     updatedAt: DateTime.parse(json['updated_at'] ?? DateTime.now().toIso8601String()),
+    createdBy: json['created_by'],
+    updatedBy: json['updated_by'],
+    history: json['history'] != null ? List<Map<String, dynamic>>.from(json['history']) : null,
   );
 
   Product copyWith({
@@ -50,6 +62,9 @@ class Product {
     String? factoryId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? createdBy,
+    String? updatedBy,
+    List<Map<String, dynamic>>? history,
   }) {
     return Product(
       id: id ?? this.id,
@@ -60,6 +75,9 @@ class Product {
       factoryId: factoryId ?? this.factoryId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      createdBy: createdBy ?? this.createdBy,
+      updatedBy: updatedBy ?? this.updatedBy,
+      history: history ?? this.history,
     );
   }
 }

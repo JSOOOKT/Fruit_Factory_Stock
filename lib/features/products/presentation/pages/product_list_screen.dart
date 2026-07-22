@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/product_providers.dart';
-import '../../data/models/product_model.dart';  // ✅ Fixed path
+import '../../data/models/product_model.dart';
+import 'product_detail_screen.dart';
+import 'product_history_screen.dart';
 
 class ProductListScreen extends ConsumerWidget {
   const ProductListScreen({Key? key}) : super(key: key);
@@ -13,14 +15,18 @@ class ProductListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Products'),
+        title: const Text('สินค้า'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
+          // ✅ ไอคอนประวัติ
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.refresh(productListProvider),
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              context.push('/products/history');
+            },
           ),
+          // ❌ ลบปุ่มรีเฟรสออก
         ],
       ),
       body: productsAsync.when(
@@ -32,11 +38,11 @@ class ProductListScreen extends ConsumerWidget {
                 children: [
                   Icon(Icons.inventory, size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 16),
-                  Text('No products yet', style: TextStyle(color: Colors.grey[600])),
+                  Text('ยังไม่มีสินค้า', style: TextStyle(color: Colors.grey[600])),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => context.push('/products/add'),
-                    child: const Text('Add Product'),
+                    child: const Text('เพิ่มสินค้า'),
                   ),
                 ],
               ),
@@ -49,25 +55,67 @@ class ProductListScreen extends ConsumerWidget {
               final product = products[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.green[100],
-                    child: Text(product.code[0].toUpperCase()),
-                  ),
-                  title: Text(product.name),
-                  subtitle: Text('Code: ${product.code} | Stock: ${product.stock} ${product.unit}'),
-                  trailing: PopupMenuButton(
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
-                    ],
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        context.push('/products/edit/${product.id}', extra: product);
-                      } else if (value == 'delete') {
-                        _showDeleteDialog(context, ref, product);
-                      }
-                    },
+                child: InkWell(
+                  onTap: () {
+                    context.push('/products/detail', extra: product);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Colors.green[100],
+                          child: Text(
+                            product.code[0].toUpperCase(),
+                            style: TextStyle(
+                              color: Colors.green[700],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'รหัส: ${product.code}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                'ยอดคงเหลือ: ${product.stock.toStringAsFixed(1)} KG',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: product.stock < 50 ? Colors.red : Colors.green,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.grey),
+                          onPressed: () {
+                            context.push('/products/edit/${product.id}', extra: product);
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          onPressed: () => _showDeleteDialog(context, ref, product),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -103,12 +151,12 @@ class ProductListScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: Text('Are you sure you want to delete "${product.name}"?'),
+        title: const Text('ลบสินค้า'),
+        content: Text('คุณแน่ใจหรือไม่ที่จะลบ "${product.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('ยกเลิก'),
           ),
           TextButton(
             onPressed: () async {
@@ -116,10 +164,10 @@ class ProductListScreen extends ConsumerWidget {
               Navigator.pop(context);
               ref.refresh(productListProvider);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Product deleted')),
+                const SnackBar(content: Text('ลบสินค้าเรียบร้อย')),
               );
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('ลบ', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

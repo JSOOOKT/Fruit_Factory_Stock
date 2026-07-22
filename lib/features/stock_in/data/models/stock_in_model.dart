@@ -6,7 +6,7 @@ class StockIn {
   final double quantity;
   final String unit;
   final String? supplierName;
-  final String? tankType;
+  final String? tankType;  // ✅ ต้องมี tankType
   final String? tankNumber;
   final String? note;
   final DateTime date;
@@ -39,7 +39,7 @@ class StockIn {
     'quantity': quantity,
     'unit': unit,
     'supplier_name': supplierName,
-    'tank_type': tankType,
+    'tank_type': tankType,  // ✅ บันทึก tankType
     'tank_number': tankNumber,
     'note': note,
     'date': date.toIso8601String(),
@@ -56,7 +56,7 @@ class StockIn {
     quantity: (json['quantity'] as num?)?.toDouble() ?? 0,
     unit: json['unit'] ?? 'KG',
     supplierName: json['supplier_name'],
-    tankType: json['tank_type'],
+    tankType: json['tank_type'],  // ✅ ดึง tankType
     tankNumber: json['tank_number'],
     note: json['note'],
     date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),

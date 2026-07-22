@@ -11,7 +11,6 @@ final stockInListProvider = FutureProvider<List<StockIn>>((ref) async {
   final collection = ref.watch(stockInCollectionProvider);
   final factoryId = ref.watch(currentFactoryIdProvider);
   
-  // ✅ กรองเฉพาะข้อมูลของโรงงานที่เลือก
   final snapshot = await collection
       .where('factoryId', isEqualTo: factoryId)
       .orderBy('date', descending: true)
@@ -36,7 +35,7 @@ class StockInNotifier extends StateNotifier<List<StockIn>> {
     final collection = ref.read(stockInCollectionProvider);
     final factoryId = ref.read(currentFactoryIdProvider);
     
-    // ✅ บันทึกพร้อม factoryId
+    // ✅ บันทึกพร้อม factoryId และ tankType
     final stockInWithFactory = StockIn(
       id: stockIn.id,
       productId: stockIn.productId,
@@ -45,6 +44,8 @@ class StockInNotifier extends StateNotifier<List<StockIn>> {
       quantity: stockIn.quantity,
       unit: stockIn.unit,
       supplierName: stockIn.supplierName,
+      tankType: stockIn.tankType, // ✅ เก็บ tankType
+      tankNumber: stockIn.tankNumber,
       note: stockIn.note,
       date: stockIn.date,
       recordedBy: stockIn.recordedBy,

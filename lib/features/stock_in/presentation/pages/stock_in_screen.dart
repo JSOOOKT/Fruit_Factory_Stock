@@ -24,21 +24,20 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
   final _noteController = TextEditingController();
   final _newProductNameController = TextEditingController();
   final _newProductCodeController = TextEditingController();
-  final _tankNumberController = TextEditingController();
+  final _newTankTypeController = TextEditingController();
   
   String? _selectedProductId;
   String? _selectedTankType;
-  String? _selectedTankNumber;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
-  bool _showCustomTankNumber = false;
-  String? _userName;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
   }
+
+  String? _userName;
 
   Future<void> _loadUserData() async {
     final userData = await ref.read(currentUserDataProvider.future);
@@ -54,7 +53,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
     _noteController.dispose();
     _newProductNameController.dispose();
     _newProductCodeController.dispose();
-    _tankNumberController.dispose();
+    _newTankTypeController.dispose();
     super.dispose();
   }
 
@@ -163,11 +162,97 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
     );
   }
 
+  Future<void> _showAddTankDialog() async {
+    _newTankTypeController.clear();
+
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('เพิ่มประเภทถังใหม่'),
+        content: TextFormField(
+          controller: _newTankTypeController,
+          decoration: const InputDecoration(
+            labelText: 'ประเภทถัง',
+            border: OutlineInputBorder(),
+            hintText: 'เช่น ถังเขียว, ถังแดง',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('ยกเลิก'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final tankType = _newTankTypeController.text.trim();
+              if (tankType.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('กรุณากรอกประเภทถัง'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
+
+              try {
+                final factoryId = ref.read(currentFactoryIdProvider);
+                if (factoryId == null) return;
+
+                final repository = ref.read(tankRepositoryProvider);
+                await repository.addTank(
+                  factoryId: factoryId,
+                  tankType: tankType,
+                  tankNumber: null,
+                );
+
+                ref.refresh(tankListProvider);
+                ref.refresh(tankListStreamProvider);
+                
+                setState(() => _selectedTankType = tankType);
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('เพิ่มประเภทถังสำเร็จ!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  Navigator.pop(context, true);
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('เพิ่มถัง'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submitStockIn() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedProductId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('กรุณาเลือกสินค้า'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    // ✅ บังคับเลือกประเภทถัง
+    if (_selectedTankType == null || _selectedTankType!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('กรุณาเลือกประเภทถัง'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
@@ -190,9 +275,8 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
       supplierName: _supplierController.text.isNotEmpty 
           ? _supplierController.text.trim() 
           : null,
-      tankType: _selectedTankType,
-      tankNumber: _selectedTankNumber ?? 
-          (_tankNumberController.text.isNotEmpty ? _tankNumberController.text.trim() : null),
+      tankType: _selectedTankType!, // ✅ บันทึกประเภทถัง
+      tankNumber: null,
       note: _noteController.text.isNotEmpty ? _noteController.text.trim() : null,
       date: _selectedDate,
       recordedBy: _userName ?? user?.uid ?? 'unknown',
@@ -212,12 +296,9 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
         _quantityController.clear();
         _supplierController.clear();
         _noteController.clear();
-        _tankNumberController.clear();
         setState(() {
           _selectedProductId = null;
           _selectedTankType = null;
-          _selectedTankNumber = null;
-          _showCustomTankNumber = false;
         });
       }
     } catch (e) {
@@ -249,432 +330,313 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Form
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Form(
-                  key: _formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        // Product Dropdown with Add New Option
-                        productsAsync.when(
-                          data: (products) => DropdownButtonFormField<String>(
-                            value: _selectedProductId,
-                            decoration: const InputDecoration(
-                              labelText: 'สินค้า',
-                              prefixIcon: Icon(Icons.inventory_2),
-                              border: OutlineInputBorder(),
-                            ),
-                            items: [
-                              const DropdownMenuItem(
-                                value: '__add_new__',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.add_circle, color: Colors.green),
-                                    SizedBox(width: 8),
-                                    Text('+ เพิ่มสินค้าใหม่'),
-                                  ],
-                                ),
-                              ),
-                              ...products.map((product) {
-                                return DropdownMenuItem(
-                                  value: product.id,
-                                  child: Text('${product.code} - ${product.name}'),
-                                );
-                              }).toList(),
-                            ],
-                            onChanged: (value) {
-                              if (value == '__add_new__') {
-                                _showAddProductDialog();
-                              } else {
-                                setState(() => _selectedProductId = value);
-                              }
-                            },
-                            validator: (value) => 
-                                value == null || value == '__add_new__'
-                                    ? 'กรุณาเลือกสินค้า' 
-                                    : null,
-                          ),
-                          loading: () => DropdownButtonFormField<String>(
-                            decoration: const InputDecoration(
-                              labelText: 'กำลังโหลด...',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: [],
-                            onChanged: null,
-                          ),
-                          error: (error, stack) => DropdownButtonFormField<String>(
-                            decoration: InputDecoration(
-                              labelText: 'เกิดข้อผิดพลาด',
-                              errorText: error.toString(),
-                              border: OutlineInputBorder(),
-                            ),
-                            items: [],
-                            onChanged: null,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Quantity
-                        TextFormField(
-                          controller: _quantityController,
-                          decoration: const InputDecoration(
-                            labelText: 'จำนวน (กิโลกรัม)',
-                            prefixIcon: Icon(Icons.numbers),
-                            suffixText: 'KG',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'กรุณากรอกจำนวน';
-                            }
-                            if (double.tryParse(value) == null) {
-                              return 'กรุณากรอกตัวเลข';
-                            }
-                            if (double.parse(value) <= 0) {
-                              return 'จำนวนต้องมากกว่า 0';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Supplier Name
-                        TextFormField(
-                          controller: _supplierController,
-                          decoration: const InputDecoration(
-                            labelText: 'ชื่อผู้ส่ง / บริษัท',
-                            prefixIcon: Icon(Icons.business),
-                            border: OutlineInputBorder(),
-                            hintText: 'เช่น บริษัท ผลไม้ไทย จำกัด',
-                          ),
-                          validator: (value) => 
-                              value == null || value.isEmpty
-                                  ? 'กรุณากรอกชื่อผู้ส่ง'
-                                  : null,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Tank Type - ใช้ Stream เพื่ออัปเดตทันที
-                        tanksAsync.when(
-                          data: (tanks) {
-                            final tankTypes = tanks.map((t) => t.tankType).toSet().toList();
-                            if (tankTypes.isEmpty) {
-                              return Column(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange[50],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.orange[200]!),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.warning, color: Colors.orange[700]),
-                                        const SizedBox(width: 8),
-                                        const Expanded(
-                                          child: Text(
-                                            'ยังไม่มีประเภทถัง กรุณาเพิ่มในหน้าการตั้งค่า',
-                                            style: TextStyle(fontSize: 14),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                ],
-                              );
-                            }
-                            return Column(
-                              children: [
-                                DropdownButtonFormField<String>(
-                                  value: _selectedTankType,
-                                  decoration: const InputDecoration(
-                                    labelText: 'ประเภทถัง (ไม่บังคับ)',
-                                    prefixIcon: Icon(Icons.inventory),
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  hint: const Text('เลือกประเภทถัง'),
-                                  items: tankTypes.map((type) {
-                                    return DropdownMenuItem(
-                                      value: type,
-                                      child: Text(type),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedTankType = value;
-                                      _selectedTankNumber = null;
-                                      _showCustomTankNumber = false;
-                                      _tankNumberController.clear();
-                                    });
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                            );
-                          },
-                          loading: () => Column(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Form
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
                             children: [
-                              DropdownButtonFormField(
-                                decoration: const InputDecoration(
-                                  labelText: 'กำลังโหลดประเภทถัง...',
-                                  border: OutlineInputBorder(),
-                                ),
-                                items: [],
-                                onChanged: null,
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-                          ),
-                          error: (_, __) => Column(
-                            children: [
-                              DropdownButtonFormField(
-                                decoration: const InputDecoration(
-                                  labelText: 'ไม่สามารถโหลดประเภทถัง',
-                                  border: OutlineInputBorder(),
-                                ),
-                                items: [],
-                                onChanged: null,
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-                          ),
-                        ),
-
-                        // Tank Number (แสดงเมื่อเลือกประเภทถังแล้ว)
-                        if (_selectedTankType != null)
-                          tanksAsync.when(
-                            data: (tanks) {
-                              final tankNumbers = tanks
-                                  .where((t) => t.tankType == _selectedTankType && t.tankNumber != null)
-                                  .map((t) => t.tankNumber!)
-                                  .toList();
-                              
-                              if (tankNumbers.isEmpty && !_showCustomTankNumber) {
-                                return TextFormField(
-                                  controller: _tankNumberController,
+                              productsAsync.when(
+                                data: (products) => DropdownButtonFormField<String>(
+                                  value: _selectedProductId,
                                   decoration: const InputDecoration(
-                                    labelText: 'เลขถัง (ไม่บังคับ)',
-                                    prefixIcon: Icon(Icons.numbers),
-                                    border: OutlineInputBorder(),
-                                    hintText: 'ระบุเลขถัง',
-                                  ),
-                                );
-                              }
-                              
-                              if (tankNumbers.isNotEmpty && !_showCustomTankNumber) {
-                                return DropdownButtonFormField<String>(
-                                  value: _selectedTankNumber,
-                                  decoration: const InputDecoration(
-                                    labelText: 'เลขถัง',
-                                    prefixIcon: Icon(Icons.numbers),
+                                    labelText: 'สินค้า *',
+                                    prefixIcon: Icon(Icons.inventory_2),
                                     border: OutlineInputBorder(),
                                   ),
-                                  hint: const Text('เลือกเลขถัง'),
                                   items: [
                                     const DropdownMenuItem(
-                                      value: '__custom__',
-                                      child: Text('+ ระบุเลขถังเอง'),
+                                      value: '__add_new__',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.add_circle, color: Colors.green),
+                                          SizedBox(width: 8),
+                                          Text('+ เพิ่มสินค้าใหม่'),
+                                        ],
+                                      ),
                                     ),
-                                    ...tankNumbers.map((number) {
+                                    ...products.map((product) {
                                       return DropdownMenuItem(
-                                        value: number,
-                                        child: Text(number),
+                                        value: product.id,
+                                        child: Text('${product.code} - ${product.name}'),
                                       );
                                     }).toList(),
                                   ],
                                   onChanged: (value) {
-                                    if (value == '__custom__') {
-                                      setState(() {
-                                        _showCustomTankNumber = true;
-                                        _selectedTankNumber = null;
-                                        _tankNumberController.clear();
-                                      });
+                                    if (value == '__add_new__') {
+                                      _showAddProductDialog();
                                     } else {
-                                      setState(() {
-                                        _selectedTankNumber = value;
-                                        _tankNumberController.text = value ?? '';
-                                      });
+                                      setState(() => _selectedProductId = value);
                                     }
                                   },
+                                  validator: (value) => 
+                                      value == null || value == '__add_new__'
+                                          ? 'กรุณาเลือกสินค้า' 
+                                          : null,
+                                ),
+                                loading: () => DropdownButtonFormField<String>(
+                                  decoration: const InputDecoration(
+                                    labelText: 'กำลังโหลด...',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: [],
+                                  onChanged: null,
+                                ),
+                                error: (error, stack) => DropdownButtonFormField<String>(
+                                  decoration: InputDecoration(
+                                    labelText: 'เกิดข้อผิดพลาด',
+                                    errorText: error.toString(),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: [],
+                                  onChanged: null,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              TextFormField(
+                                controller: _quantityController,
+                                decoration: const InputDecoration(
+                                  labelText: 'จำนวน (กิโลกรัม) *',
+                                  prefixIcon: Icon(Icons.numbers),
+                                  suffixText: 'KG',
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'กรุณากรอกจำนวน';
+                                  }
+                                  if (double.tryParse(value) == null) {
+                                    return 'กรุณากรอกตัวเลข';
+                                  }
+                                  if (double.parse(value) <= 0) {
+                                    return 'จำนวนต้องมากกว่า 0';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              TextFormField(
+                                controller: _supplierController,
+                                decoration: const InputDecoration(
+                                  labelText: 'ชื่อผู้ส่ง / บริษัท *',
+                                  prefixIcon: Icon(Icons.business),
+                                  border: OutlineInputBorder(),
+                                  hintText: 'เช่น บริษัท ผลไม้ไทย จำกัด',
+                                ),
+                                validator: (value) => 
+                                    value == null || value.isEmpty
+                                        ? 'กรุณากรอกชื่อผู้ส่ง'
+                                        : null,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // ✅ ประเภทถัง (บังคับ)
+                              tanksAsync.when(
+                                data: (tanks) {
+                                  final tankTypes = tanks.map((t) => t.tankType).toSet().toList();
+                                  
+                                  return DropdownButtonFormField<String>(
+                                    value: _selectedTankType,
+                                    decoration: const InputDecoration(
+                                      labelText: 'ประเภทถัง *',
+                                      prefixIcon: Icon(Icons.inventory),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    hint: const Text('เลือกประเภทถัง'),
+                                    items: [
+                                      const DropdownMenuItem(
+                                        value: '__add_new_tank__',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.add_circle, color: Colors.blue),
+                                            SizedBox(width: 8),
+                                            Text('+ เพิ่มประเภทถังใหม่'),
+                                          ],
+                                        ),
+                                      ),
+                                      ...tankTypes.map((type) {
+                                        return DropdownMenuItem(
+                                          value: type,
+                                          child: Text(type),
+                                        );
+                                      }).toList(),
+                                    ],
+                                    onChanged: (value) {
+                                      if (value == '__add_new_tank__') {
+                                        _showAddTankDialog();
+                                      } else {
+                                        setState(() => _selectedTankType = value);
+                                      }
+                                    },
+                                    validator: (value) => value == null ? 'กรุณาเลือกประเภทถัง' : null,
+                                  );
+                                },
+                                loading: () => DropdownButtonFormField<String>(
+                                  decoration: const InputDecoration(
+                                    labelText: 'กำลังโหลดประเภทถัง...',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: [],
+                                  onChanged: null,
+                                ),
+                                error: (_, __) => DropdownButtonFormField<String>(
+                                  decoration: const InputDecoration(
+                                    labelText: 'ไม่สามารถโหลดประเภทถัง',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: [],
+                                  onChanged: null,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              InkWell(
+                                onTap: () => _selectDate(context),
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'วันที่รับเข้า *',
+                                    prefixIcon: Icon(Icons.calendar_today),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  child: Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              TextFormField(
+                                controller: _noteController,
+                                decoration: const InputDecoration(
+                                  labelText: 'หมายเหตุ (ไม่บังคับ)',
+                                  prefixIcon: Icon(Icons.note),
+                                  border: OutlineInputBorder(),
+                                ),
+                                maxLines: 2,
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: ElevatedButton(
+                                  onPressed: _isLoading ? null : _submitStockIn,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: _isLoading
+                                      ? const CircularProgressIndicator(color: Colors.white)
+                                      : const Text('บันทึกการนำเข้า'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Recent Stock In
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ประวัติการนำเข้าระยะล่าสุด',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 200,
+                          child: stockInAsync.when(
+                            data: (stockIns) {
+                              if (stockIns.isEmpty) {
+                                return const Center(
+                                  child: Text(
+                                    'ยังไม่มีประวัติการนำเข้า',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
                                 );
                               }
-                              return const SizedBox.shrink();
+                              return ListView.builder(
+                                shrinkWrap: true,
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                itemCount: stockIns.length > 10 ? 10 : stockIns.length,
+                                itemBuilder: (context, index) {
+                                  final item = stockIns[index];
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    child: ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: Colors.blue[100],
+                                        child: Text(item.productCode[0].toUpperCase()),
+                                      ),
+                                      title: Text(item.productName),
+                                      subtitle: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('${DateFormat('dd/MM/yyyy').format(item.date)}'),
+                                          if (item.supplierName != null)
+                                            Text(
+                                              'ผู้ส่ง: ${item.supplierName}',
+                                              style: const TextStyle(fontSize: 12),
+                                            ),
+                                          if (item.tankType != null && item.tankType!.isNotEmpty)
+                                            Text(
+                                              'ถัง: ${item.tankType}',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.blue,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      trailing: Text(
+                                        '+${item.quantity} ${item.unit}',
+                                        style: const TextStyle(
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
                             },
-                            loading: () => const SizedBox.shrink(),
-                            error: (_, __) => const SizedBox.shrink(),
-                          ),
-
-                        // Custom Tank Number Field
-                        if (_showCustomTankNumber)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: TextFormField(
-                              controller: _tankNumberController,
-                              decoration: const InputDecoration(
-                                labelText: 'ระบุเลขถัง',
-                                prefixIcon: Icon(Icons.numbers),
-                                border: OutlineInputBorder(),
-                                hintText: 'เช่น T-001',
-                              ),
+                            loading: () => const Center(child: CircularProgressIndicator()),
+                            error: (error, stack) => Center(
+                              child: Text('เกิดข้อผิดพลาด: $error'),
                             ),
-                          ),
-                        
-                        // Date
-                        InkWell(
-                          onTap: () => _selectDate(context),
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'วันที่รับเข้า',
-                              prefixIcon: Icon(Icons.calendar_today),
-                              border: OutlineInputBorder(),
-                            ),
-                            child: Text(DateFormat('dd/MM/yyyy').format(_selectedDate)),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Note
-                        TextFormField(
-                          controller: _noteController,
-                          decoration: const InputDecoration(
-                            labelText: 'หมายเหตุ (ไม่บังคับ)',
-                            prefixIcon: Icon(Icons.note),
-                            border: OutlineInputBorder(),
-                          ),
-                          maxLines: 2,
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Submit Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _submitStockIn,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: _isLoading
-                                ? const CircularProgressIndicator(color: Colors.white)
-                                : const Text('บันทึกการนำเข้า'),
                           ),
                         ),
                       ],
                     ),
-                  ),
+                    
+                    const SizedBox(height: 20),
+                  ],
                 ),
               ),
             ),
-            
-            const SizedBox(height: 16),
-            
-            // Recent Stock In
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'ประวัติการนำเข้าระยะล่าสุด',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: stockInAsync.when(
-                      data: (stockIns) {
-                        if (stockIns.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.inbox, size: 48, color: Colors.grey[400]),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'ยังไม่มีประวัติการนำเข้า',
-                                  style: TextStyle(color: Colors.grey[600]),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                        return ListView.builder(
-                          itemCount: stockIns.length > 10 ? 10 : stockIns.length,
-                          itemBuilder: (context, index) {
-                            final item = stockIns[index];
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: Colors.blue[100],
-                                  child: Text(item.productCode[0].toUpperCase()),
-                                ),
-                                title: Text(item.productName),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('${DateFormat('dd/MM/yyyy').format(item.date)}'),
-                                    if (item.supplierName != null)
-                                      Text(
-                                        'ผู้ส่ง: ${item.supplierName}',
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                    if (item.tankType != null)
-                                      Text(
-                                        'ถัง: ${item.tankType}${item.tankNumber != null ? ' (${item.tankNumber})' : ''}',
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                    if (item.note != null)
-                                      Text(
-                                        'หมายเหตุ: ${item.note}',
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                  ],
-                                ),
-                                trailing: Text(
-                                  '+${item.quantity} ${item.unit}',
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) => Center(
-                        child: Column(
-                          children: [
-                            Text('เกิดข้อผิดพลาด: $error'),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: () => ref.refresh(stockInListProvider),
-                              child: const Text('ลองใหม่'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

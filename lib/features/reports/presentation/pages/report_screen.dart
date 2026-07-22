@@ -1,272 +1,82 @@
-// lib/features/reports/presentation/pages/report_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import '../providers/report_providers.dart';
-import '../services/export_service.dart';
+import 'package:go_router/go_router.dart';
+import 'product_tank_summary_screen.dart';
 
-class ReportScreen extends ConsumerStatefulWidget {
+class ReportScreen extends ConsumerWidget {
   const ReportScreen({Key? key}) : super(key: key);
 
   @override
-  ConsumerState<ReportScreen> createState() => _ReportScreenState();
-}
-
-class _ReportScreenState extends ConsumerState<ReportScreen> {
-  bool _isExporting = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final reportAsync = ref.watch(reportSummaryProvider);
-
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reports'),
+        title: const Text('รายงาน'),
         backgroundColor: Colors.purple,
         foregroundColor: Colors.white,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.download),
-            onSelected: (value) async {
-              final report = ref.read(reportSummaryProvider).valueOrNull;
-              if (report != null) {
-                setState(() => _isExporting = true);
-                try {
-                  if (value == 'excel') {
-                    await ExportService.exportToExcel(report);
-                  } else if (value == 'csv') {
-                    await ExportService.exportToCSV(report);
-                  } else if (value == 'pdf') {
-                    await ExportService.exportToPDF(report);
-                  }
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Export failed: $e'), backgroundColor: Colors.red),
-                  );
-                }
-                setState(() => _isExporting = false);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'excel', child: Text('Export as Excel')),
-              const PopupMenuItem(value: 'csv', child: Text('Export as CSV')),
-              const PopupMenuItem(value: 'pdf', child: Text('Export as PDF')),
-            ],
-          ),
-        ],
       ),
-      body: reportAsync.when(
-        data: (report) {
-          return _buildReportContent(context, report);
-        },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
-        ),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error, size: 48, color: Colors.red[400]),
-              const SizedBox(height: 16),
-              Text('Error loading report: $error'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.refresh(reportSummaryProvider),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReportContent(BuildContext context, ReportSummary report) {
-    final formatter = NumberFormat('#,##0');
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          // Summary Cards
-          Row(
-            children: [
-              Expanded(
-                child: _buildSummaryCard(
-                  'Products',
-                  report.totalProducts.toString(),
-                  Icons.inventory_2,
-                  Colors.green,
+          Card(
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green[100],
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: Icon(Icons.inventory, color: Colors.green[700]),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildSummaryCard(
-                  'Stock In',
-                  formatter.format(report.totalStockIn),
-                  Icons.arrow_downward,
-                  Colors.blue,
-                ),
+              title: const Text(
+                'สรุปสินค้าในถัง',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildSummaryCard(
-                  'Stock Out',
-                  formatter.format(report.totalStockOut),
-                  Icons.arrow_upward,
-                  Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildSummaryCard(
-                  'Balance',
-                  formatter.format(report.currentStock),
-                  Icons.balance,
-                  Colors.purple,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // Product Report Table
-          Text(
-            'Product Details',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              subtitle: const Text('ดูข้อมูลสินค้าและถังที่ใช้งาน'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () => context.push('/reports/product-tank-summary'),
+            ),
           ),
           const SizedBox(height: 12),
           Card(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 16,
-                columns: const [
-                  DataColumn(label: Text('Code')),
-                  DataColumn(label: Text('Name')),
-                  DataColumn(label: Text('In'), numeric: true),
-                  DataColumn(label: Text('Out'), numeric: true),
-                  DataColumn(label: Text('Balance'), numeric: true),
-                  DataColumn(label: Text('Unit')),
-                ],
-                rows: report.productReports.map((product) {
-                  final balanceColor = product.balance < 10
-                      ? Colors.red
-                      : product.balance < 50
-                          ? Colors.orange
-                          : Colors.green;
-
-                  return DataRow(
-                    cells: [
-                      DataCell(Text(product.code)),
-                      DataCell(Text(product.name)),
-                      DataCell(Text(formatter.format(product.stockIn))),
-                      DataCell(Text(formatter.format(product.stockOut))),
-                      DataCell(
-                        Text(
-                          formatter.format(product.balance),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: balanceColor,
-                          ),
-                        ),
-                      ),
-                      DataCell(Text(product.unit)),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Daily Report
-          Text(
-            'Daily Activity',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue[100],
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: Icon(Icons.history, color: Colors.blue[700]),
+              ),
+              title: const Text(
+                'ประวัติการเคลื่อนไหว',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: const Text('ดูประวัติการรับเข้า-เบิกออกทั้งหมด'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () => context.push('/stock-in/history'),
+            ),
           ),
           const SizedBox(height: 12),
           Card(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 16,
-                columns: const [
-                  DataColumn(label: Text('Date')),
-                  DataColumn(label: Text('In'), numeric: true),
-                  DataColumn(label: Text('Out'), numeric: true),
-                  DataColumn(label: Text('Net'), numeric: true),
-                ],
-                rows: report.dailyReports.map((day) {
-                  final netColor = day.netChange >= 0 ? Colors.green : Colors.red;
-                  final netText = day.netChange >= 0 ? '+${day.netChange}' : '${day.netChange}';
-
-                  return DataRow(
-                    cells: [
-                      DataCell(Text(DateFormat('dd/MM/yyyy').format(day.date))),
-                      DataCell(Text(formatter.format(day.stockIn))),
-                      DataCell(Text(formatter.format(day.stockOut))),
-                      DataCell(
-                        Text(
-                          netText,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: netColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Footer
-          Text(
-            'Generated: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange[100],
+                  borderRadius: BorderRadius.circular(8),
                 ),
-            textAlign: TextAlign.center,
+                child: Icon(Icons.assessment, color: Colors.orange[700]),
+              ),
+              title: const Text(
+                'สรุปภาพรวม',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: const Text('ดูสรุปยอดรวมทั้งหมด'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () => context.go('/'),
+            ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-            ),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-            ),
-          ],
-        ),
       ),
     );
   }

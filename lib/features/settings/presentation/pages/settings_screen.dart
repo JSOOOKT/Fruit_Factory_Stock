@@ -5,11 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../factory/presentation/providers/factory_providers.dart';
 import '../../../factory/data/repositories/factory_repository.dart';
-import '../../../factory/presentation/pages/edit_factory_screen.dart';
 import '../providers/language_provider.dart';
-import 'tank_settings_screen.dart';
-import 'report_issue_screen.dart';
-import 'purpose_settings_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -38,29 +34,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _nameController.text = userData['name'] ?? '';
       _userRole = userData['role'] ?? 'recorder';
     }
-  }
-
-  void _goToSwitchFactory() {
-    context.push('/factory/select');
-  }
-
-  void _goToEditFactory() {
-    final factory = ref.read(currentFactoryProvider).valueOrNull;
-    if (factory != null) {
-      context.push('/factory/edit', extra: factory);
-    }
-  }
-
-  void _goToTankSettings() {
-    context.push('/settings/tanks');
-  }
-
-  void _goToPurposeSettings() {
-    context.push('/settings/purposes');
-  }
-
-  void _goToReportIssue() {
-    context.push('/settings/report-issue');
   }
 
   Future<void> _updateProfile() async {
@@ -186,274 +159,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final currentLang = ref.watch(languageProvider);
     final isThai = currentLang == 'th';
-    final currentFactory = ref.watch(currentFactoryProvider);
-    
-    final canEditFactory = _userRole == 'manager' || _userRole == 'admin';
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isThai ? 'ตั้งค่า' : 'Settings'),
+        title: Text(isThai ? 'แก้ไขโปรไฟล์' : 'Edit Profile'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // โรงงานปัจจุบัน
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isThai ? '🏭 โรงงานปัจจุบัน' : 'Current Factory',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    currentFactory.when(
-                      data: (factory) {
-                        if (factory == null) {
-                          return const Text('ยังไม่ได้เลือกโรงงาน');
-                        }
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              factory.name,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                            Text('รหัส: ${factory.factoryCode}'),
-                            Text('ที่อยู่: ${factory.address}'),
-                            Text('เบอร์โทร: ${factory.phone}'),
-                            
-                            if (canEditFactory) ...[
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 40,
-                                child: OutlinedButton.icon(
-                                  onPressed: _goToEditFactory,
-                                  icon: const Icon(Icons.edit, size: 18),
-                                  label: Text(isThai ? 'แก้ไขข้อมูลโรงงาน' : 'Edit Factory'),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.green,
-                                    side: const BorderSide(color: Colors.green),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        );
-                      },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (_, __) => const Text('ไม่สามารถโหลดข้อมูลโรงงาน'),
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    Text(
-                      isThai ? '🔄 สลับโรงงาน' : 'Switch Factory',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      isThai 
-                          ? 'กดเพื่อเลือกโรงงานอื่นและกรอกรหัสผ่านใหม่'
-                          : 'Tap to select another factory and enter password',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 45,
-                      child: ElevatedButton.icon(
-                        onPressed: _goToSwitchFactory,
-                        icon: const Icon(Icons.swap_horiz),
-                        label: Text(isThai ? 'ไปที่หน้าเลือกโรงงาน' : 'Go to Select Factory'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Tank Management
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isThai ? '🛢️ จัดการถังบรรจุ' : 'Tank Management',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      isThai 
-                          ? 'เพิ่ม แก้ไข หรือลบ ประเภทถังและเลขถัง'
-                          : 'Add, edit, or delete tank types and numbers',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 45,
-                      child: ElevatedButton.icon(
-                        onPressed: _goToTankSettings,
-                        icon: const Icon(Icons.inventory),
-                        label: Text(isThai ? 'จัดการถังบรรจุ' : 'Manage Tanks'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Purpose Management
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isThai ? '📝 จัดการวัตถุประสงค์' : 'Purpose Management',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      isThai 
-                          ? 'เพิ่ม หรือลบ วัตถุประสงค์สำหรับการเบิกออก'
-                          : 'Add or delete purposes for stock out',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 45,
-                      child: ElevatedButton.icon(
-                        onPressed: _goToPurposeSettings,
-                        icon: const Icon(Icons.info),
-                        label: Text(isThai ? 'จัดการวัตถุประสงค์' : 'Manage Purposes'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purple,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Report Issue
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isThai ? '📋 รายงานปัญหา' : 'Report Issue',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      isThai 
-                          ? 'แจ้งปัญหาหรือข้อเสนอแนะถึงผู้ดูแลระบบ'
-                          : 'Report issues or suggestions to the administrator',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 45,
-                      child: ElevatedButton.icon(
-                        onPressed: _goToReportIssue,
-                        icon: const Icon(Icons.report_problem),
-                        label: Text(isThai ? 'รายงานปัญหา' : 'Report Issue'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Language Section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isThai ? '🌐 ภาษา' : 'Language',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildLanguageButton(
-                            'ไทย',
-                            'th',
-                            currentLang == 'th',
-                            onTap: () => _changeLanguage('th'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildLanguageButton(
-                            'English',
-                            'en',
-                            currentLang == 'en',
-                            onTap: () => _changeLanguage('en'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
             // Profile Section
             Card(
               child: Padding(
@@ -627,32 +347,5 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildLanguageButton(String label, String code, bool isSelected, {required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.green : Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.grey[800],
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _changeLanguage(String lang) async {
-    await ref.read(languageProvider.notifier).setLanguage(lang);
   }
 }

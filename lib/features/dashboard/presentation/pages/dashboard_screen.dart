@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../products/presentation/providers/product_providers.dart';
+import '../../../products/data/models/product_model.dart';
 import '../../../stock_in/presentation/providers/stock_in_providers.dart';
+import '../../../stock_in/data/models/stock_in_model.dart';
 import '../../../stock_out/presentation/providers/stock_out_providers.dart';
+import '../../../stock_out/data/models/stock_out_model.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -62,7 +65,7 @@ class DashboardScreen extends ConsumerWidget {
                         'Welcome, $userName! 👋',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 20.0,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -109,7 +112,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     const Text(
                       'Welcome! 👋',
-                      style: TextStyle(color: Colors.white, fontSize: 20.0, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                     Text(
                       'Fruit Factory Stock',
@@ -180,9 +183,7 @@ class DashboardScreen extends ConsumerWidget {
                     title: 'Reports',
                     color: Colors.purple,
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Reports coming soon!')),
-                      );
+                      context.push('/reports');
                     },
                   ),
                 ),
@@ -200,83 +201,70 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
+            
+            // ✅ Statistics Cards
             productsAsync.when(
               data: (products) {
                 final totalProducts = products.length;
-                final totalStock = products.fold<double>(
-                  0.0,
-                  (sum, product) => sum + product.stock,
-                );
-                final stockInCount = stockInAsync.valueOrNull?.length ?? 0;
-                final stockOutCount = stockOutAsync.valueOrNull?.length ?? 0;
+                final totalStock = products.fold<double>(0, (sum, product) => sum + product.stock);
                 
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
+                return stockInAsync.when(
+                  data: (stockIns) {
+                    final totalStockIn = stockIns.fold<double>(0, (sum, item) => sum + item.quantity);
+                    
+                    return stockOutAsync.when(
+                      data: (stockOuts) {
+                        final totalStockOut = stockOuts.fold<double>(0, (sum, item) => sum + item.quantity);
+                        
+                        return GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 4,
+                          childAspectRatio: 1.1,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
                           children: [
-                            Text(
-                              totalProducts.toString(),
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
-                                  ),
+                            _buildStatCard(
+                              context,
+                              title: 'Products',
+                              value: totalProducts.toString(),
+                              icon: Icons.inventory_2,
+                              color: Colors.green,
+                              subtitle: 'รายการ',
                             ),
-                            const Text('Products', style: TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text(
-                              stockInCount.toString(),
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue,
-                                  ),
+                            _buildStatCard(
+                              context,
+                              title: 'Stock In',
+                              value: totalStockIn.toStringAsFixed(1),
+                              icon: Icons.download,
+                              color: Colors.blue,
+                              subtitle: 'KG',
                             ),
-                            const Text('Stock In', style: TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text(
-                              stockOutCount.toString(),
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.orange,
-                                  ),
+                            _buildStatCard(
+                              context,
+                              title: 'Stock Out',
+                              value: totalStockOut.toStringAsFixed(1),
+                              icon: Icons.upload,
+                              color: Colors.orange,
+                              subtitle: 'KG',
                             ),
-                            const Text('Stock Out', style: TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Text(
-                              totalStock.toString(),
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.purple,
-                                  ),
+                            _buildStatCard(
+                              context,
+                              title: 'Total Stock',
+                              value: totalStock.toStringAsFixed(1),
+                              icon: Icons.balance,
+                              color: Colors.purple,
+                              subtitle: 'KG',
                             ),
-                            const Text('Total Stock', style: TextStyle(fontSize: 12)),
                           ],
-                        ),
-                      ),
-                    ],
-                  ),
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (error, stack) => const Center(child: Text('Error loading stock out')),
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, stack) => const Center(child: Text('Error loading stock in')),
                 );
               },
               loading: () => Container(
@@ -330,6 +318,55 @@ class DashboardScreen extends ConsumerWidget {
               style: TextStyle(
                 fontWeight: FontWeight.w500,
                 color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required String subtitle,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 28, color: color),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[600],
+              ),
+            ),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 9,
+                color: Colors.grey[400],
               ),
             ),
           ],
